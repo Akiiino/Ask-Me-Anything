@@ -20,6 +20,8 @@ import matplotlib.pyplot as plt
 import matplotlib
 from mpl_toolkits.mplot3d import Axes3D
 from matplotlib import cm
+matplotlib.rcParams['figure.figsize'] = '12,8'
+plt.switch_backend('nbAgg')                                  # Plot in Jupyter Notebook
 
 
 # ##### 1. Генерируем точки:
@@ -110,10 +112,9 @@ splitting_line_y = np.array((-split_vector_exact[0]*NORM - split_vector_exact[1]
 
 # Построение — не самая увлекательная часть работы, но самая зрелищная. Для начала сделаем несколько приготовлений и настроек:
 
-# In[8]:
+# In[35]:
 
-plt.switch_backend('nbAgg')                                  # Plot in Jupyter Notebook
-cluster_split_figure = plt.figure(figsize=(12, 8))
+cluster_split_figure = plt.figure()
 split_plot = cluster_split_figure.add_subplot(111)
 
 split_plot.axis([-200, 200, -150, 200])                      # Set axis size
@@ -131,7 +132,7 @@ color_map = matplotlib.colors.LinearSegmentedColormap('Map', color_dict)  # Crea
 
 # А теперь построим наши точки и полученную разделяющую прямую:
 
-# In[9]:
+# In[36]:
 
 split_plot.scatter(
     points_to_split[:, 1],
@@ -224,11 +225,14 @@ cluster_split_figure.show()
 def loss_wrong(margin):
     return margin < 0
 
+
 def loss_square(margin):
     return (margin-1)**2
 
+
 def loss_svm (margin):
     return np.maximum(0, 1-margin)
+
 
 def loss_logistic(margin):
     return np.log(1+np.exp(-margin))
@@ -236,9 +240,9 @@ def loss_logistic(margin):
 
 # И построим графики:
 
-# In[11]:
+# In[37]:
 
-loss_func_figure = plt.figure(figsize=(12, 8))
+loss_func_figure = plt.figure()
 loss_func_plot = loss_func_figure.add_subplot(111)
 
 loss_func_plot.axis([-1, 3, -0.3, 2])
@@ -282,6 +286,8 @@ loss_func_figure.show()
 
 def func(x):
     return 2*(x[0]-5)**2 + (x[1]+3)**2
+
+
 def func_grad(x):
     return np.array([
         4*(x[0]-5),
@@ -295,13 +301,13 @@ def func_grad(x):
 
 def fixed_gradient_descent(grad, learning_rate, steps, start_point):
     curr_point = start_point
-    interm_sequence = [start_point]
+    interm_sequence = np.array(start_point)
     
-    for iter in range(steps):
+    for i in range(steps):
         curr_point = curr_point - learning_rate*grad(curr_point)
-        interm_sequence.append(curr_point)
+        interm_sequence = np.vstack((interm_sequence, curr_point))
 
-    return np.array(interm_sequence)
+    return interm_sequence
 
 
 # Попробуем найти минимум нашей функции с помощью градиентного спуска:
@@ -312,16 +318,16 @@ trajectory = fixed_gradient_descent(
     func_grad,
     1e-2,
     100,
-    np.multiply(np.random.random_sample(2), np.array([20, 25]))-np.array([5, 15])  # Get random point in plotted area
+    np.random.random_sample(2) * np.array([20, 25])-np.array([5, 15])  # Get random point in plotted area
 )
 
 
 # И построим траекторию движения:
 
-# In[15]:
+# In[38]:
 
 # === Plot settings ===
-square_figure = plt.figure(figsize=(12, 8))
+square_figure = plt.figure()
 square_plot = square_figure.gca(projection='3d')
 
 X = np.arange(-5, 15, 0.25)
@@ -454,9 +460,9 @@ print(rosenbrock_trajectory[-10:])
 
 # Построим график этой функции и посмотрим, где могут возникать проблемные места:
 
-# In[22]:
+# In[39]:
 
-rosenbrock_figure = plt.figure(figsize=(12, 8))
+rosenbrock_figure = plt.figure()
 rosenbrock_plot = rosenbrock_figure.gca(projection='3d')
 X = np.arange(-3, 3, 0.15)
 Y = np.arange(-10, 10, 0.15)
@@ -514,6 +520,7 @@ rosenbrock_figure.show()
 def mean_squared_error(candidate_vector, points, labels):
     return 1/labels.size*sum((points[i].dot(candidate_vector)-labels[i])**2 for i in range(labels.size))
 
+
 def mean_squared_error_grad(candidate_vector, points, labels):
     return np.array([
             1 / (np.size(points, axis=0)) * sum(
@@ -545,9 +552,9 @@ splitting_line_grad_y = np.array((-split_vector_grad[0]*NORM - split_vector_grad
 
 # И снова построим точки, но на этот раз с двумя разделяющими прямыми:
 
-# In[25]:
+# In[40]:
 
-grad_comp_figure = plt.figure(figsize=(12, 8))
+grad_comp_figure = plt.figure()
 grad_comp_plot = grad_comp_figure.add_subplot(111)
 
 grad_comp_plot.axis([-200, 200, -150, 200])
@@ -571,12 +578,11 @@ grad_comp_plot.plot(x_points, splitting_line_grad_y, color='blue', linewidth=2) 
 grad_comp_figure.show()
 
 
-# Даже разницы почти не видно! Действительно, давайте рассмотрим полученные векторы:
+# Даже разницы почти не видно! Действительно, давайте рассмотрим полученные векторы и вычислим, как сильно они отличаются:
 
-# In[26]:
+# In[29]:
 
-print(split_vector_grad)
-print(split_vector_exact[:,0])
+print(split_vector_grad -split_vector_exact[:,0])
 
 
 # Почти идеальное совпадение!
@@ -585,7 +591,7 @@ print(split_vector_exact[:,0])
 
 # По сути, мы хотим перемещаться вдоль антиградиента не на некоторое заранее заданное расстояние, а в ту точку на луче, где значение нашей функции минимально; воспользуемся для этого `scipy.optimize`:
 
-# In[27]:
+# In[30]:
 
 from scipy.optimize import minimize
 
@@ -593,7 +599,7 @@ def steepest_gradient_descent(grad, func, steps, start_point):
     curr_point = start_point
     interm_sequence = [start_point]
     
-    for iter in range(steps):
+    for i in range(steps):
         curr_learn_rate = minimize(lambda dist: func(curr_point-dist*grad(curr_point)), np.zeros((1, 1))).x[0]
 
         curr_point = curr_point - curr_learn_rate*grad(curr_point)
@@ -604,7 +610,7 @@ def steepest_gradient_descent(grad, func, steps, start_point):
 
 # И проверим, как он работает:
 
-# In[28]:
+# In[31]:
 
 split_vector_steepest_grad_trajectory = steepest_gradient_descent(
     lambda w: mean_squared_error_grad(w, points_to_split, true_labels),
@@ -616,16 +622,18 @@ split_vector_steepest_grad_trajectory = steepest_gradient_descent(
 split_vector_steepest_grad = split_vector_steepest_grad_trajectory[-1]
 
 
-# In[29]:
+# In[32]:
 
 splitting_line_steepest_grad_y = np.array(
     (-split_vector_steepest_grad[0]*NORM - split_vector_steepest_grad[1]*x_points)/split_vector_steepest_grad[2]
 )
 
 
-# In[30]:
+# И снова построим точки и разделяющую прямую:
 
-grad_comp_2_figure = plt.figure(figsize=(12, 8))
+# In[41]:
+
+grad_comp_2_figure = plt.figure()
 grad_comp_2_plot = grad_comp_2_figure.add_subplot(111)
 
 grad_comp_2_plot.axis([-200, 200, -150, 200])
@@ -652,9 +660,9 @@ grad_comp_2_figure.show()
 
 # И снова совпадает, что, впрочем, не очень удивительно. Давайте теперь сравним скорость схождения:
 
-# In[31]:
+# In[42]:
 
-grad_comp_rate_figure = plt.figure(figsize=(12, 8))
+grad_comp_rate_figure = plt.figure()
 grad_comp_rate_plot = grad_comp_rate_figure.add_subplot(111)
 
 grad_comp_rate_plot.axis([0, 100, 0, 1000])
@@ -723,9 +731,9 @@ grad_comp_rate_figure.show()
 # \right)
 # $$
 
-# Теперь реализуем функцию и градиент:
+# Реализуем функцию ошибки и её градиент:
 
-# In[32]:
+# In[43]:
 
 def logistic_loss(w, points, labels):
     return 1/labels.size * sum(
@@ -745,14 +753,14 @@ def logistic_loss_grad(w, points, labels):
 
 # Поработаем с MNIST. Для начала подготовим данные для работы:
 
-# In[33]:
+# In[44]:
 
 data = np.loadtxt('train.csv', skiprows=1, delimiter=',')
 
 
 # Составим два набора данных, разделив нули и единицы на два равных по размеру множества: по одному мы будем обучаться, по другому --- проверять
 
-# In[34]:
+# In[45]:
 
 ones = data[data[:,0]==1]
 zeroes = data[data[:,0]==0]
@@ -770,7 +778,7 @@ train_labels = np.concatenate([-1*np.ones((zeroes_train.shape[0], 1)), np.ones((
 test_labels = np.concatenate([-1*np.ones((zeroes_test.shape[0], 1)), np.ones((ones_test.shape[0], 1))])
 
 
-# In[35]:
+# In[46]:
 
 def stochastic_gradient_descent(grad, points, labels, learning_rate, batch_size, passes, start_point):
     curr_point = start_point
@@ -792,7 +800,7 @@ def stochastic_gradient_descent(grad, points, labels, learning_rate, batch_size,
 
 # Пришло время обучаться и искать оптимальный размер батча. Для проверки качества будем использовать следующую функцию:
 
-# In[36]:
+# In[47]:
 
 def correct_guesses(descent, batch_size, passes, points, labels, grad):
     classifier = descent(          # Train the classifier
@@ -807,44 +815,52 @@ def correct_guesses(descent, batch_size, passes, points, labels, grad):
     return (sum(np.sign(x.dot(classifier)) == np.sign(y) for x, y in zip(test_set, test_labels)) / train_set.shape[0]).item()
 
 
-# In[37]:
+# In[87]:
 
 import timeit
 
-X = range(10, train_set.shape[0]//2, 10)
-
-#plot_values = list(map(lambda x: correct_guesses(x, test_set, test_labels, logistic_loss_grad), X))
+X = np.arange(10, train_set.shape[0]//2, 10)
 
 plot_values = []
 times = []
-#for point in X:
-#    print("{:.2%}".format(point/(train_set.shape[0]//2)))
-#    func = lambda: plot_values.append(correct_guesses(stochastic_gradient_descent, point, 3, test_set, test_labels, logistic_loss_grad))
-#    times.append(timeit.timeit(func, number = 1))
+for point in X:
+    func = lambda: plot_values.append(correct_guesses(stochastic_gradient_descent, point, 3, test_set, test_labels, logistic_loss_grad))
+    times.append(timeit.timeit(func, number = 1))
 
 
-# (я обязательно построю этот график, как только буду готов оставить ноут на несколько часов без вмешательства)
+# In[93]:
 
-# In[41]:
-
-stochastic_figure = plt.figure(figsize=(12, 8))
+stochastic_figure = plt.figure()
 stochastic_plot = stochastic_figure.add_subplot(111)
  
 stochastic_plot.axis([-1, 2200, -0.3, 2])
 stochastic_plot.axhline(0, color='black')
 stochastic_plot.axvline(0, color='black')
 
-#stochastic_plot.plot(np.array(list(X)), 1/30*np.array(times), label="Time")
-#stochastic_plot.plot(np.array(list(X)), np.array(plot_values), label="Accuracy")
+stochastic_plot.plot(X, 1/60*np.array(times), label="Time")
+stochastic_plot.plot(X, np.array(plot_values), label="Accuracy")
 
-legend = stochastic_plot.legend(loc='upper center', shadow=True)
+legend = stochastic_plot.legend(loc='center right', shadow=True)
 
 stochastic_figure.show()
 
 
 # Давайте теперь посмотрим, как быстро сходится наша функция; для этого построим график сглаженной ошибки:
 
-# In[42]:
+# In[52]:
+
+stochastic_classifier = stochastic_gradient_descent(
+    logistic_loss_grad,
+    train_set,
+    train_labels,
+    1e-7,
+    50,
+    3,
+    np.zeros((train_set.shape[1]))
+)
+
+
+# In[53]:
 
 def exp_smooth(loss_data, gamma):
     smoothened_loss = np.empty((1))
@@ -855,9 +871,9 @@ def exp_smooth(loss_data, gamma):
     return smoothened_loss
 
 
-# In[43]:
+# In[54]:
 
-smooth_figure = plt.figure(figsize=(12, 8))
+smooth_figure = plt.figure()
 smooth_plot = smooth_figure.add_subplot(111)
 
 smooth_plot.plot(
@@ -914,7 +930,7 @@ smooth_figure.show()
 
 # Реализуем саму функцию и её градиент:
 
-# In[44]:
+# In[55]:
 
 def func_q(x):
     return 10*x[0]**2 + x[1]**2
@@ -927,7 +943,7 @@ def func_q_grad(x):
 # 
 # $$s^k = \gamma s^{k-1} + \lambda\triangledown Q(x^k)$$
 
-# In[45]:
+# In[56]:
 
 def impulse_grad_descent(grad, learning_rate, gamma, steps, start_point):
     curr_point = start_point
@@ -944,7 +960,7 @@ def impulse_grad_descent(grad, learning_rate, gamma, steps, start_point):
 
 # Ну а теперь просто посчитаем траектории
 
-# In[46]:
+# In[57]:
 
 start = np.multiply(np.random.random_sample(2), np.array([40, 40]))-np.array([20, 20])
 
@@ -954,10 +970,10 @@ traj_fixed = fixed_gradient_descent(func_q_grad, 7e-2, 1000, start)
 
 # И построим графики:
 
-# In[47]:
+# In[58]:
 
 # === Plot settings ===
-impulse_figure = plt.figure(figsize=(12, 8))
+impulse_figure = plt.figure()
 impulse_plot = impulse_figure.gca(projection='3d')
 
 X = np.arange(-20, 20, 0.25)
@@ -1014,7 +1030,7 @@ impulse_figure.show()
 
 # Даже рассказывать толком нечего; всё уже было, повторим для новой формулы
 
-# In[48]:
+# In[59]:
 
 def nesterov_grad_descent(grad, learning_rate, gamma, steps, start_point):
     curr_point = start_point
@@ -1029,7 +1045,7 @@ def nesterov_grad_descent(grad, learning_rate, gamma, steps, start_point):
     return np.array(interm_sequence)
 
 
-# In[49]:
+# In[66]:
 
 rosenbrock_start = np.multiply(np.random.random_sample(2), np.array([6, 20]))-np.array([3,10])
 
@@ -1037,10 +1053,10 @@ traj_rosenbrock_impulse = impulse_grad_descent(rosenbrock_grad, 7e-5, 0.7, 10000
 traj_rosenbrock_nesterov = nesterov_grad_descent(rosenbrock_grad, 7e-5, 0.7, 10000, rosenbrock_start)
 
 
-# In[50]:
+# In[69]:
 
 # === Plot settings ===
-nesterov_figure = plt.figure(figsize=(12, 8))
+nesterov_figure = plt.figure()
 nesterov_plot = nesterov_figure.gca(projection='3d')
 
 X = np.arange(-3, 3, 0.15)
@@ -1069,7 +1085,8 @@ nesterov_plot.plot(
         rosenbrock(point) for point in traj_rosenbrock_impulse
     ]),
     color='green',
-    linewidth=9
+    linewidth=9,
+    label="Impulse"
 )
 
 nesterov_plot.plot(
@@ -1078,9 +1095,12 @@ nesterov_plot.plot(
     np.array([
         rosenbrock(point) for point in traj_rosenbrock_nesterov
     ]),
-    color='yellow',
-    linewidth=3
+    color='red',
+    linewidth=3,
+    label="Nesterov"
 )
+
+nesterov_plot.legend(loc="upper left")
 
 nesterov_figure.show()
 
@@ -1094,7 +1114,7 @@ nesterov_figure.show()
 # 1. Обучите модель этим способом для mnist.
 # 2. Сравните сходимость с обычным стохастическим градиентным спуском (графики).
 
-# In[51]:
+# In[70]:
 
 def adaptive_gradient_descent(grad, points, labels, learning_rate, batch_size, passes, start_point):
     curr_point = start_point
@@ -1118,22 +1138,9 @@ def adaptive_gradient_descent(grad, points, labels, learning_rate, batch_size, p
     return interm_sequence
 
 
-# Обучим сразу и адаптивную, и обычную модель:
+# Обучим адаптивную модель:
 
-# In[52]:
-
-stochastic_classifier = stochastic_gradient_descent(
-    logistic_loss_grad,
-    train_set,
-    train_labels,
-    1e-7,
-    50,
-    3,
-    np.zeros((train_set.shape[1]))
-)
-
-
-# In[53]:
+# In[71]:
 
 adaptive_classifier = adaptive_gradient_descent(
     logistic_loss_grad,
@@ -1148,7 +1155,7 @@ adaptive_classifier = adaptive_gradient_descent(
 
 # И сравним точность, просто посчитав отношение правильно классифицированных ко всем:
 
-# In[54]:
+# In[73]:
 
 print(
     "Adagrad:",
@@ -1161,7 +1168,7 @@ print(
 )
 
 print(
-    "Basic stochastic classifier:",
+    "Basic stochastic:",
     (
         sum(
             np.sign(x.dot(stochastic_classifier[-1].T)) == np.sign(y)
@@ -1175,7 +1182,7 @@ print(
 
 # ##### RMSprop
 
-# In[55]:
+# In[74]:
 
 def RMSprop(grad, points, labels, learning_rate, gamma, batch_size, passes, start_point):
     curr_point = start_point
@@ -1199,7 +1206,7 @@ def RMSprop(grad, points, labels, learning_rate, gamma, batch_size, passes, star
     return interm_sequence
 
 
-# In[56]:
+# In[75]:
 
 RMSprop_classifier = RMSprop(
     logistic_loss_grad,
@@ -1213,7 +1220,7 @@ RMSprop_classifier = RMSprop(
 )
 
 
-# In[57]:
+# In[76]:
 
 print(
     "Adagrad:",
@@ -1238,9 +1245,9 @@ print(
 
 # Не видно заметных улучшений. Вероятно, выигрыш в скорости сходимости?
 
-# In[58]:
+# In[77]:
 
-RMSprop_comp_figure = plt.figure(figsize=(12, 8))
+RMSprop_comp_figure = plt.figure()
 RMSprop_comp_plot = RMSprop_comp_figure.add_subplot(111)
 
 RMSprop_comp_plot.plot(
@@ -1294,7 +1301,7 @@ RMSprop_comp_figure.show()
 # 
 # $$\Delta x_i^{k + 1} = - \frac{\sqrt{X^k_{i, i} + \varepsilon}}{\sqrt{G_{i, i}^k  + \varepsilon}} \cdot \frac{\partial Q}{\partial x_i}(x^k)$$
 
-# In[59]:
+# In[78]:
 
 def adadelta(grad, points, labels, gamma, batch_size, passes, start_point):
     curr_point = start_point
@@ -1324,7 +1331,7 @@ def adadelta(grad, points, labels, gamma, batch_size, passes, start_point):
     return interm_sequence
 
 
-# In[60]:
+# In[79]:
 
 adadelta_classifier = adadelta(
     logistic_loss_grad,
@@ -1337,7 +1344,7 @@ adadelta_classifier = adadelta(
 )
 
 
-# In[61]:
+# In[80]:
 
 print(
     "Adagrad:",
@@ -1362,9 +1369,9 @@ print(
 
 # Снова сравним, как меняется ошибка по мере обучения:
 
-# In[62]:
+# In[81]:
 
-Adadelta_comp_figure = plt.figure(figsize=(12, 8))
+Adadelta_comp_figure = plt.figure()
 Adadelta_comp_plot = Adadelta_comp_figure.add_subplot(111)
 
 Adadelta_comp_plot.plot(
@@ -1421,7 +1428,7 @@ Adadelta_comp_figure.show()
 
 # ###### Adam
 
-# In[70]:
+# In[82]:
 
 def adam(grad, points, labels, learning_rate, decay_first, decay_second, batch_size, passes, start_point):
     first_moment = np.zeros((points.shape[1]))
@@ -1431,8 +1438,6 @@ def adam(grad, points, labels, learning_rate, decay_first, decay_second, batch_s
 
     batch_num = points.shape[0] // batch_size + 1
     
-    G = np.zeros((points.shape[1], points.shape[1]))
-
     step = 0
     for i in range(passes):
         for j in range(batch_num):
@@ -1453,7 +1458,7 @@ def adam(grad, points, labels, learning_rate, decay_first, decay_second, batch_s
     return interm_sequence
 
 
-# In[74]:
+# In[83]:
 
 adam_classifier = adam(
     logistic_loss_grad,
@@ -1470,9 +1475,9 @@ adam_classifier = adam(
 
 # Построим график (не включая Adadelta, иначе ничего не видно):
 
-# In[76]:
+# In[84]:
 
-adam_comp_figure = plt.figure(figsize=(12, 8))
+adam_comp_figure = plt.figure()
 adam_comp_plot = adam_comp_figure.add_subplot(111)
 
 adam_comp_plot.plot(
@@ -1527,7 +1532,7 @@ adam_comp_figure.show()
 
 # Adam показывает себя неплохо. Давайте теперь, наконец, сравним точности всех обученных классификаторов:
 
-# In[81]:
+# In[85]:
 
 print(
     "Basic stochastic classifier:".ljust(30),
