@@ -13,7 +13,7 @@
 
 # ###### 0. Сделаем все необходимые приготовления для начала работы:
 
-# In[1]:
+# In[6]:
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -187,6 +187,25 @@ cluster_split_figure.show()
 # есть не что иное, как максимизация правдоподобия.
 # 2. Отобразите все функционалы качества в осях $M \times Q$ для одного элемента.
 
+# ##### 1. Максимизация правдоподобия
+
+# Заметим, что
+# $$\sigma(-z) = \frac{1}{1 + \exp(z)} = \frac{1}{1 + \frac{1}{\exp(-z)}} = \frac{\exp(-z)}{1 + \exp(-z)} = 1 - \frac{1}{1 + \exp(-z)} = 1 - \sigma(z).$$
+# 
+# Тогда $\mathbb{P}\{y^{(i)} = y^{(i)}_{\mathrm{pred}}\mid x^{(i)}\}=\sigma(y^{(i)}_{\mathrm{pred}}(wx^{(i)}+b))$. Мы хотим максимизировать правдоподобие, то есть вероятность того, что мы угадали все классы правильно. Будем считать совпадения предсказаний с реальностью независимыми событиями для разных элементов выборки; тогда искомая максимизируемая вероятность это $$\prod_{i=0}^n\mathbb{P}\{y^{(i)} = y^{(i)}_{\mathrm{pred}}\mid x^{(i)}\}.$$
+# Тогда решаемая задача выглядит так:
+# 
+# $$
+#    \underset{w, b}{\mathrm{argmax}}\prod_{i=0}^n\mathbb{P}\{y^{(i)} = y^{(i)}_{\mathrm{pred}}\mid x^{(i)}\} =
+#    \underset{w, b}{\mathrm{argmax}}\ln\prod_{i=0}^n\mathbb{P}\{y^{(i)} = y^{(i)}_{\mathrm{pred}}\mid x^{(i)}\} =\\=
+#    \underset{w, b}{\mathrm{argmax}}\sum_{i=0}^n\ln\mathbb{P}\{y^{(i)} = y^{(i)}_{\mathrm{pred}}\mid x^{(i)}\} =
+#    \underset{w, b}{\mathrm{argmax}}\sum_{i=0}^n\ln\sigma(y^{(i)}_{\mathrm{pred}}(wx^{(i)}+b)) =\\=
+#    \underset{w, b}{\mathrm{argmax}}\sum_{i=0}^n\ln\frac{1}{1 + \exp(-y^{(i)}_{\mathrm{pred}}(wx^{(i)}+b))} =
+#    \underset{w, b}{\mathrm{argmax}}\sum_{i=0}^n-\ln( 1 + \exp(-y^{(i)}_{\mathrm{pred}}(wx^{(i)}+b)) )=\\=
+#    \underset{w, b}{\mathrm{argmin}}\sum_{i=0}^n\ln( 1 + e^{-y^{(i)}_{\mathrm{pred}}(wx^{(i)}+b)}) =
+#    \underset{w, b}{\mathrm{argmin}}\sum_{x, y}\ln( 1 + e^{-y(wx+b)})
+# $$
+
 # ##### 2. Сравнение функционалов качества
 
 # Для начала выразим $Q$ через $M$ для всех наших функционалов:
@@ -282,7 +301,7 @@ loss_func_figure.show()
 # 
 # В Python это будет выглядеть так:
 
-# In[12]:
+# In[4]:
 
 def func(x):
     return 2*(x[0]-5)**2 + (x[1]+3)**2
@@ -297,7 +316,7 @@ def func_grad(x):
 
 # Напишем базовую функцию градиентного спуска с ограниченным числом шагов:
 
-# In[13]:
+# In[2]:
 
 def fixed_gradient_descent(grad, learning_rate, steps, start_point):
     curr_point = start_point
@@ -312,19 +331,19 @@ def fixed_gradient_descent(grad, learning_rate, steps, start_point):
 
 # Попробуем найти минимум нашей функции с помощью градиентного спуска:
 
-# In[14]:
+# In[15]:
 
 trajectory = fixed_gradient_descent(
     func_grad,
     1e-2,
     100,
-    np.random.random_sample(2) * np.array([20, 25])-np.array([5, 15])  # Get random point in plotted area
+    np.random.random_sample(2) * np.array([40, 50])-np.array([10, 30])  # Get random point in plotted area
 )
 
 
 # И построим траекторию движения:
 
-# In[38]:
+# In[17]:
 
 # === Plot settings ===
 square_figure = plt.figure()
