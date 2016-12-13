@@ -99,7 +99,7 @@
 
 # Сначала все базовые приготовления:
 
-# In[ ]:
+# In[1]:
 
 import numpy as np
 from keras.utils.np_utils import to_categorical
@@ -108,7 +108,7 @@ from keras.datasets import mnist
 (X_train, y_train), (X_test, y_test) = mnist.load_data()
 
 
-# In[ ]:
+# In[2]:
 
 digits = X_train.reshape((60000, 784))
 test_digits = X_test.reshape((10000, 784))
@@ -122,7 +122,7 @@ labels = to_categorical(y_train, classes_num)
 test_labels = to_categorical(y_test, classes_num)
 
 
-# In[ ]:
+# In[3]:
 
 def softmax(x):
     e_x = np.exp(x - np.max(x))
@@ -131,7 +131,7 @@ def softmax(x):
 
 # Воспользуемся Adam'ом из прошлой лабораторной:
 
-# In[ ]:
+# In[4]:
 
 def adam(grad, points, labels, learning_rate, decay_first, decay_second, batch_size, passes, start_point):
     first_moment = np.zeros((points.shape[1], 10))
@@ -160,10 +160,10 @@ def adam(grad, points, labels, learning_rate, decay_first, decay_second, batch_s
 
 # Теперь реализуем вычисление градиента и прочие полезные вещи:
 
-# In[ ]:
+# In[5]:
 
 def MNIST_Q(curr_point):
-    return -1/digits.shape[0]*sum(np.log(softmax(x @ curr_point)[y]+1e-10) for x, y in zip(digits, raw_labels))
+    return -1/digits.shape[0]*sum(np.log(softmax(x @ curr_point)[y]+1e-10) for x, y in zip(digits, y_train))
 
 def MNIST_grad(curr_point, batch_num, batch_size):
     curr_slice = slice(batch_num*batch_size, min((batch_num+1)*batch_size, digits.shape[0]))
@@ -184,7 +184,7 @@ def accuracy_check(classifier, test_points, test_labels):
 
 # Теперь можно и обучать. Но обучать наугад неинтересно и неэффективно, поэтому попробуем найти оптимальное значение:
 
-# In[ ]:
+# In[6]:
 
 optimal_learn_rate = (0, 0)
 for i in np.arange(-8, 1, 0.3):
@@ -205,7 +205,7 @@ for i in np.arange(-8, 1, 0.3):
         optimal_learn_rate = (i, accuracy)
 
 
-# In[ ]:
+# In[7]:
 
 classifier = adam(
     MNIST_grad,
@@ -222,12 +222,12 @@ classifier = adam(
 
 # Оценим точность:
 
-# In[ ]:
+# In[8]:
 
 print(accuracy_check(classifier, test_digits, test_labels))
 
 
-# 92% --- довольно неплохо для простой однослойной сети!
+# 92.5% --- довольно неплохо для простой однослойной сети!
 
 # **Задание**
 # 1. Как стоит подбирать значения $\lambda_1$ и $\lambda_2$?
@@ -235,7 +235,7 @@ print(accuracy_check(classifier, test_digits, test_labels))
 
 # Для начала реализуем градиент регуляризованной функции ошибки. Он довольно простой, т.к. функции базовые:
 
-# In[ ]:
+# In[9]:
 
 def MNIST_grad_reg(curr_point, batch_num, batch_size, l_1, l_2):
     curr_slice = slice(batch_num*batch_size, min((batch_num+1)*batch_size, digits.shape[0]))
@@ -249,7 +249,7 @@ def MNIST_grad_reg(curr_point, batch_num, batch_size, l_1, l_2):
 
 # И снова попробуем найти хорошие коэффициенты. Давайте теперь для красоты построим график:
 
-# In[ ]:
+# In[10]:
 
 lambda_range = np.arange(-8, 1, 0.3)
 accuracies = np.zeros((lambda_range.shape[0], lambda_range.shape[0]))
@@ -272,9 +272,7 @@ for l_1 in range(lambda_range.shape[0]):
         losses[l_1, l_2] = MNIST_Q(classifier)
 
 
-# *plot*
-
-# In[ ]:
+# In[38]:
 
 import matplotlib.pyplot as plt
 import matplotlib
@@ -287,7 +285,7 @@ reg_plot = reg_figure.gca(projection='3d')
 
 X = np.arange(-3, 3, 0.15)
 Y = np.arange(-10, 10, 0.15)
-reg_plot.view_init(90, 0)
+reg_plot.view_init(33, 30)
 
 reg_plot.plot_surface(
     *np.meshgrid(lambda_range,
@@ -296,7 +294,6 @@ reg_plot.plot_surface(
     rstride=1,
     cstride=1,
     cmap=cm.get_cmap('jet', 200),
-    norm=matplotlib.colors.LogNorm(),
     linewidth=0,
     antialiased=True
 )
@@ -304,7 +301,7 @@ reg_plot.plot_surface(
 reg_figure.show()
 
 
-# В общем, видно, что оптимально получается при минимальном влиянии регуляризаторов. Видимо, под нашу задачу они не подходят, что тут поделать.
+# Видно, что лучшие решения получаются при минимальном ($10^{-8}$) влиянии регуляризаторов. Видимо, под нашу задачу они не подходят, что тут поделать.
 
 # **Задание**
 # 1. Предложите значения $w$ и $b$, чтобы $y$ реализовала операторы *and*, *or*, *not*.
@@ -384,7 +381,7 @@ reg_figure.show()
 #  * [Autoencoder](https://en.wikipedia.org/wiki/Autoencoder)
 #  * [RBM](https://en.wikipedia.org/wiki/Restricted_Boltzmann_machine)
 
-# In[ ]:
+# In[12]:
 
 from keras.datasets import mnist
 from keras.models import Sequential
@@ -399,7 +396,7 @@ np.random.seed(1337)  # for reproducibility
 
 # Не будем изобретать велосипед и воспользуемся шаблоном из примера от Keras, изменив его под наши нужды. Нам всего-то нужно два Dense слоя с перемежающими их активациями --- ReLu в середине и softmax на выходе:
 
-# In[ ]:
+# In[13]:
 
 batch_size = 512
 epoch_number = 10
@@ -437,7 +434,7 @@ print('Test accuracy:', score[1])
 
 # Даже такая довольно нехитрая сеть обходит по точности нашу рукописную, а ведь она ещё и реализуется проще. А что вообще можно выжать из такой простой архитектуры? Можно варьировать размер скрытого слоя, например, или размер батча. Интуитивно, впрочем, кажется, что при большинстве размеров батча ничего принципиально не должно меняться --- разве что, на очень малых размерах будет гораздо медленнее считаться. А вот размер слоя может оказывать большее влияние. Попробуем построить график точности от размера скрытого слоя:
 
-# In[ ]:
+# In[14]:
 
 batch_size = 512
 classes_number = 10
@@ -478,12 +475,11 @@ for i in range(0, max_size):
     hidd_accuracies[i] = score[1]
 
 
-# In[ ]:
+# In[42]:
 
 size_figure = plt.figure()
 size_plot = size_figure.add_subplot(111)
 size_plot.set_xlabel("log n")
-size_plot.set_ylabel("accuracy")
 
 X = np.arange(0, max_size)
 
@@ -507,11 +503,11 @@ size_plot.legend(loc="upper center")
 size_figure.show()
 
 
-# Видно, что прирост сильно замедляется с ростом размерности скрытого слоя.
+# Видно, что прирост точности сильно замедляется с ростом размерности скрытого слоя.
 
 # А теперь придумаем чуть более сложную архитектуру и пообучаем её подольше; это должно позволить нам добиться ещё большей точноcти:
 
-# In[ ]:
+# In[16]:
 
 batch_size = 512
 nb_classes = 10
@@ -560,11 +556,11 @@ print('Test accuracy:', score[1])
 
 # Мы уже смотрели, как зависит качество от размера скрытого слоя; а давайте теперь поменяем число самих слоёв?
 
-# In[ ]:
+# In[45]:
 
 batch_size = 512
 classes_number = 10
-epoch_number = 5
+epoch_number = 20
 max_size = 10
 
 hidd_num_losses = np.zeros((max_size))
@@ -600,8 +596,8 @@ for i in range(0, max_size):
         digits,
         labels,
         batch_size=batch_size,
-        nb_epoch=epoch_number*(i+1),
-        verbose=2,
+        nb_epoch=min(epoch_number*(i+1), 100),
+        verbose=0,
         validation_data=(test_digits, test_labels)
     )
 
@@ -610,11 +606,34 @@ for i in range(0, max_size):
     hidd_num_accuracies[i] = score[1]
 
 
+# In[46]:
+
+hidden_num_figure = plt.figure()
+hidden_num_plot = hidden_num_figure.add_subplot(111)
+hidden_num_plot.set_xlabel("Number of hidden layers")
+
+X = np.arange(0, max_size)
+
+hidden_num_plot.plot(
+    X,
+    hidd_num_accuracies,
+    linewidth=1,
+    antialiased=True,
+    label="Accuracy"
+)
+
+hidden_num_plot.legend(loc="upper center")
+
+hidden_num_figure.show()
+
+
+# Что-то странное; впрочем, ясно, что больше слоёв, во-первых, не улучшают ситуацию, а во-вторых, сильно ухудшают скорость обучения.
+
 # ## Автоэнкодеры
 
 # Напоследок поэкспериментируем с автоэнкодерами:
 
-# In[ ]:
+# In[18]:
 
 def visualise(orig, model, n = 10):
     decoded = model.predict(orig[:n])
@@ -633,25 +652,27 @@ def visualise(orig, model, n = 10):
     draw.show()
 
 
-# In[ ]:
+# In[34]:
 
-batch_size = 2048
+batch_size = 256
 nb_epoch = 100
 
 coding_layers = [
-    Dense(1024, input_shape=(784,)),
+    Dense(128, input_shape=(784,)),
     Activation('relu'),
-    Dense(128),
+    Dense(64),
+    Activation('relu'),
+    Dense(32),
     Activation('relu')
 ]
 
 decoding_layers = [
+    Dense(64),
+    Activation('relu'),
     Dense(128),
     Activation('relu'),
-    Dense(1024),
-    Activation('relu'),
     Dense(784),
-    Activation('relu')
+    Activation('sigmoid')
 ]
 
 model = Sequential(coding_layers + decoding_layers)
@@ -659,28 +680,29 @@ model = Sequential(coding_layers + decoding_layers)
 model.summary()
 
 model.compile(
-    loss='categorical_crossentropy',
-    optimizer=Adadelta(),
-    metrics=['accuracy']
+    loss='binary_crossentropy',
+    optimizer=Adadelta()
 )
 
 history = model.fit(
     digits,
     digits,
+    shuffle=True,
     batch_size=batch_size,
     nb_epoch=nb_epoch,
     verbose=2,
+    validation_data=(test_digits, test_digits)
 )
 
 
-# In[ ]:
+# In[35]:
 
 visualise(digits, model, 10)
 
 
 # А теперь самое интересное --- ведь автоэнкодер научился извлекать какие-то фичи; почему бы не основать на этом ещё одну сеть?
 
-# In[ ]:
+# In[36]:
 
 for l in coding_layers:
     l.trainable = False
@@ -691,6 +713,9 @@ nb_epoch = 200
 processing_layers = [
     Dense(512),
     Activation('relu'),
+    BatchNormalization(),
+    Dense(512),
+    Activation('relu'), 
     BatchNormalization(),
     Dense(classes_num),
     Activation('softmax')
@@ -717,6 +742,8 @@ score = model.evaluate(test_digits, test_labels, verbose=0)
 print('Test score:', score[0])
 print('Test accuracy:', score[1])
 
+
+# Работает! Хоть и не идеально, но ничем не хуже прочих вариантов.
 
 # In[ ]:
 
