@@ -633,7 +633,7 @@ hidden_num_figure.show()
 
 # Напоследок поэкспериментируем с автоэнкодерами:
 
-# In[18]:
+# In[57]:
 
 def visualise(orig, model, n = 10):
     decoded = model.predict(orig[:n])
@@ -652,7 +652,7 @@ def visualise(orig, model, n = 10):
     draw.show()
 
 
-# In[34]:
+# In[53]:
 
 batch_size = 256
 nb_epoch = 100
@@ -675,16 +675,14 @@ decoding_layers = [
     Activation('sigmoid')
 ]
 
-model = Sequential(coding_layers + decoding_layers)
+autoencoder = Sequential(coding_layers + decoding_layers)
 
-model.summary()
-
-model.compile(
+autoencoder.compile(
     loss='binary_crossentropy',
     optimizer=Adadelta()
 )
 
-history = model.fit(
+history = autoencoder.fit(
     digits,
     digits,
     shuffle=True,
@@ -695,14 +693,14 @@ history = model.fit(
 )
 
 
-# In[35]:
+# In[61]:
 
-visualise(digits, model, 10)
+visualise(test_digits, autoencoder, 10)
 
 
 # А теперь самое интересное --- ведь автоэнкодер научился извлекать какие-то фичи; почему бы не основать на этом ещё одну сеть?
 
-# In[36]:
+# In[63]:
 
 for l in coding_layers:
     l.trainable = False
@@ -711,25 +709,28 @@ batch_size = 1024
 nb_epoch = 200
 
 processing_layers = [
-    Dense(512),
+    Dense(128),
     Activation('relu'),
     BatchNormalization(),
     Dense(512),
+    Activation('relu'), 
+    BatchNormalization(),
+    Dense(128),
     Activation('relu'), 
     BatchNormalization(),
     Dense(classes_num),
     Activation('softmax')
 ]
 
-model = Sequential(coding_layers+processing_layers)
+encoder_model = Sequential(coding_layers+processing_layers)
 
-model.compile(
+encoder_model.compile(
     loss='categorical_crossentropy',
-    optimizer=RMSprop(),
+    optimizer=Adam(),
     metrics=['accuracy']
 )
 
-model.fit(
+encoder_model.fit(
     digits,
     labels,
     batch_size=batch_size,
@@ -738,12 +739,28 @@ model.fit(
     validation_data=(test_digits, test_labels)
 )
 
-score = model.evaluate(test_digits, test_labels, verbose=0)
+score = encoder_model.evaluate(test_digits, test_labels, verbose=0)
 print('Test score:', score[0])
 print('Test accuracy:', score[1])
 
 
-# Работает! Хоть и не идеально, но ничем не хуже прочих вариантов.
+# Работает! Да ещё и довольно неплохо при этом
+
+# А ещё можно посмотреть на то, как устроен наш автоэнкодер. Для этого изобразим веса нейронов первого (ну или последнего) слоя. Т.к. они работают непоредственно с изображениями, во-первых, в них ещё прослеживается структура данных, а во-вторых, они имеют нужную нам размерность.
+
+# In[120]:
+
+draw_layer = plt.figure(figsize=(10, 20))
+for i in range(128):
+    ax = draw_layer.add_subplot(16, 8, i + 1)
+    ax.imshow(autoencoder.layers[0].get_weights()[0][:,i].reshape(28, 28), cmap=plt.get_cmap('gray'))
+    ax.get_xaxis().set_visible(False)
+    ax.get_yaxis().set_visible(False)
+draw_layer.tight_layout(pad=0.5)
+draw_layer.show()
+
+
+# И действительно, явно прослеживаются фрагменты цифр! Проследить что-то осмысленное, разумеется, не получится, но красиво.
 
 # In[ ]:
 
