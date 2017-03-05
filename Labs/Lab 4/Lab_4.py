@@ -5,7 +5,7 @@
 
 # Для начала, как всегда, всевозможные приготовления к работе. Использовать будем заранее предобработанные текты из трёх википедий — английской, русской и simple. Большая часть лабы выполнялась на full, но переключение на любую другую производится заменой единственного параметра (не то чтобы это было неочевидно, впрочем).
 
-# In[1]:
+# In[ ]:
 
 import collections
 import math
@@ -34,7 +34,7 @@ import sklearn.decomposition
 from sklearn.manifold import TSNE
 
 
-# In[2]:
+# In[ ]:
 
 class Wiki:
     def __init__(self, wiki):
@@ -144,7 +144,7 @@ class Wiki:
         return counter, vocab, rev_vocab
 
 
-# In[3]:
+# In[ ]:
 
 wiki = Wiki("simple")
 
@@ -158,9 +158,9 @@ wiki = Wiki("simple")
 
 # Обучение устроено просто: пайплайн из `sklearn`'ового `TfidfVectorizer` для построения самой матрицы $X$, после чего Truncated SVD в виде `scipy.sparse.linalg.svds`.
 
-# In[4]:
+# In[ ]:
 
-def build_LSA(wiki):
+def build_lsa(wiki):
     vectorizer = TfidfVectorizer(vocabulary=wiki.vocab)
     tf_idf_matrix = vectorizer.fit_transform(
         wiki.wiki_gen(
@@ -176,27 +176,27 @@ def build_LSA(wiki):
     
     svd = sklearn.decomposition.TruncatedSVD(n_components=128)
     
-    LSA_embeds = svd.fit_transform(tf_idf_matrix)
+    lsa_embeds = svd.fit_transform(tf_idf_matrix)
     print("SVD done")
     
-    return LSA_embeds
+    return lsa_embeds
 
 
-# In[5]:
+# In[ ]:
 
-def get_LSA(wiki):
+def get_lsa(wiki):
     if not os.path.exists(wiki.LSA_EMBED_FILE):
-        LSA_embeds = build_LSA(wiki)
-        np.save(wiki.LSA_EMBED_FILE, LSA_embeds)
+        lsa_embeds = build_lsa(wiki)
+        np.save(wiki.LSA_EMBED_FILE, lsa_embeds)
     else:
-        LSA_embeds = np.load(wiki.LSA_EMBED_FILE)
+        lsa_embeds = np.load(wiki.LSA_EMBED_FILE)
         
-    return LSA_embeds
+    return lsa_embeds
 
 
-# In[6]:
+# In[ ]:
 
-LSA_embeds = get_LSA(wiki)
+lsa_embeds = get_lsa(wiki)
 
 
 # При этом после вычисления всё сохраняется на диск, чтобы лишний раз не считать, если понадобится снова.
@@ -205,7 +205,7 @@ LSA_embeds = get_LSA(wiki)
 
 # Скелет для нахождения соседей: по вектору находим ближайшие слова; сложность линейная, т.к. использован `argpartition`. Сам вектор может быть получен как напрямую из слова, так и, например, сложениями и вычитаниями других векторов.
 
-# In[7]:
+# In[ ]:
 
 def closest_to_vec(vec, embeds, wiki, metric_name='euclid', count=10, with_dists=False):
         metrics = {
@@ -234,23 +234,23 @@ def closest_to_vec(vec, embeds, wiki, metric_name='euclid', count=10, with_dists
 
 # Сам поиск по словам:
 
-# In[8]:
+# In[ ]:
 
 def closest_words(word, embeds, wiki, metric='euclid', count=10, with_dists=False):
     return closest_to_vec(embeds[wiki.vocab[word]], embeds, wiki, metric, count, with_dists)
 
 
-# In[9]:
+# In[ ]:
 
 words = ["field", "directed", "financial", "road", "provides", "player", "2011", "edition", "battle", "ended", "son", "least", "mexico", "male", "medal", "big", "central", "according", "km", "year", "rights", "george", "founded", "tournament", "instead", "movie", "445", "system", "york", "win"]
 
 
 # **4**. Найдите 10 ближайших представлений к 30 словам, которые выбрали сами. Попытайтесь сделать так, чтобы примеры были интересными.
 
-# In[10]:
+# In[ ]:
 
 for word in words:
-    print(word.ljust(10), ":", " ".join(closest_words(word, LSA_embeds, wiki)[1:]))
+    print(word.ljust(10), ":", " ".join(closest_words(word, lsa_embeds, wiki)[1:]))
 
 
 # Есть несколько интересных вещей. 
@@ -264,20 +264,20 @@ for word in words:
 # **5**. Проделайте то же самое для косинусной меры. Какой результат вам показался более интересным?
 # 
 
-# In[11]:
+# In[ ]:
 
 for word in words:
-    print(word.ljust(10), ":", " ".join(closest_words(word, LSA_embeds, wiki, metric="cosine")[1:]))
+    print(word.ljust(10), ":", " ".join(closest_words(word, lsa_embeds, wiki, metric="cosine")[1:]))
 
 
 # Тут вообще непонятно что происходит. Видимо, в длине векторов тоже есть важная информация и лучше было всё же с евклидовой метрикой.
 
 # **6**. Предложите свою меру длины, проверьте, как она работает.
 
-# In[12]:
+# In[ ]:
 
 for word in words:
-    print(word.ljust(10), ":", " ".join(closest_words(word, LSA_embeds, wiki, metric="manhattan")[1:]))
+    print(word.ljust(10), ":", " ".join(closest_words(word, lsa_embeds, wiki, metric="manhattan")[1:]))
 
 
 # В целом, примерно как и в евклидовой метрике.
@@ -310,13 +310,13 @@ for word in words:
 # 
 # Итого --- $O(TWdc)$
 
-# Батчи генерируются из скользящего окна шириной `context_window`; из каждого окна берётся `context_examples` пар слов.
+# Батчи генерируются из скользящего окна шириной `context_width`; из каждого окна берётся `context_examples` пар слов.
 
-# In[13]:
+# In[ ]:
 
-def w2v_batch_gen(batch_size, context_examples, context_window):
+def w2v_batch_gen(batch_size, context_examples, context_width):
     assert batch_size % context_examples == 0
-    assert context_examples <= 2 * context_window
+    assert context_examples <= 2 * context_width
 
     gen = wiki.wiki_gen()
     
@@ -324,22 +324,22 @@ def w2v_batch_gen(batch_size, context_examples, context_window):
     buffer = collections.deque()
 
     while True:
-        while len(buffer) < 2 * context_window + batch_size//context_examples:
+        while len(buffer) < 2 * context_width + batch_size // context_examples:
             buffer.extend(next(gen))
         
-        batch  = np.ndarray(shape=(batch_size),    dtype=np.int32)
+        batch = np.ndarray(shape=(batch_size), dtype=np.int32)
         labels = np.ndarray(shape=(batch_size, 1), dtype=np.int32)
 
-        span = 2 * context_window + 1
+        span = 2 * context_width + 1
 
         for i in range(batch_size // context_examples):
-            target = context_window
+            target = context_width
             available_targets = list(range(span))
             available_targets.remove(target)
             for j in range(context_examples):
                 target = random.choice(available_targets)
                 available_targets.remove(target)
-                batch[i * context_examples + j] = buffer[context_window]
+                batch[i * context_examples + j] = buffer[context_width]
                 labels[i * context_examples + j, 0] = buffer[target]
             buffer.popleft()
         yield batch, labels
@@ -351,11 +351,11 @@ def w2v_batch_gen(batch_size, context_examples, context_window):
 
 # Пользоваться будем NCE --- преимущественно из-за простоты реализации. Сложность обучения оценить легко: фактически, единственное существенное изменение (асимптотики, разумеется; сами алгоритмы отличаются существенно) заключается в том, что вместо прохода по всем $W$ словам, мы рассматриваем только $k$ cлучайных слов; итого сложность $O(Tcdk)$.
 
-# In[14]:
+# In[ ]:
 
 batch_size = 256
 embedding_dim = 256
-context_window = 6
+context_width = 6
 context_examples = 4
 neg_samples = 100
 
@@ -401,16 +401,14 @@ with w2v_graph.as_default():
 
 # **3**. Обучите skip-gram модель.
 
-# In[15]:
+# In[ ]:
 
-def build_w2v(wiki):
-    num_steps = 500
-
+def build_w2v(wiki, num_steps=500):
     with tf.Session(graph=w2v_graph) as session:
         init.run()
 
         average_loss = 0
-        batch_gen = w2v_batch_gen(batch_size, context_examples, context_window)
+        batch_gen = w2v_batch_gen(batch_size, context_examples, context_width)
         for step in range(num_steps):
             try:
                 for _ in range(10000):
@@ -509,11 +507,11 @@ def get_capitals(countries):
     return [
         analogy(
             [country,
-            "moscow", "seoul", "athens",],
-            ["russia", "korea", "greece",],
+            "moscow",],
+            ["russia",],
             w2v_embeds,
             wiki
-        )[0][1] for country in countries
+        )[:2] for country in countries
     ]
 
 countries = [
@@ -529,12 +527,10 @@ countries = [
     "norway",
     "india"
 ]
-print("\n".join("\t".join(pair) for pair in zip(countries, get_capitals(countries))))
+print("\n".join(": ".join((word.ljust(11), ", ".join(pair[1].rjust(10) for pair in closest))) for word, closest in zip(countries, get_capitals(countries))))
 
 
-# Как видно, работает, но не всегда идеально (Афганистан, Чикаго, што?). Чем больше пар "страна --- столица" взято в качестве опоры --- тем лучше качество (но это только гипотеза, впрочем), но тем больше вопросов "А зачем вообще, если есть большая база столиц?".
-# 
-# Логично предположить, что на самом деле вектор "Москва" - "Россия" + "Сеул" - "Корея" + "Афины" - "Греция" в три раза больше "эталонного" сдвига между столицей и страной, однако если этот вектор поделить на три, всё только портится. Видать, не такое уж и векторное пространство.
+# Как видно, работает, но не всегда идеально. Возможно, стоит делать несколько предсказаний и усреднять, но у меня не получилось выжать из этого достойный результат.
 
 # #2. CEO:
 
@@ -547,7 +543,7 @@ def get_CEOs(companies):
             ["facebook"],
             w2v_embeds,
             wiki
-        )[0][1] for company in companies
+        )[:2] for company in companies
     ]
 
 companies = [
@@ -555,7 +551,7 @@ companies = [
     "sun",
     "oracle"
 ]
-print("\n".join(" ".join(pair) for pair in zip(companies, get_CEOs(companies))))
+print("\n".join(": ".join((word.ljust(11), ", ".join(pair[1].rjust(10) for pair in closest))) for word, closest in zip(companies, get_CEOs(companies))))
 
 
 # Мда. Идея должна бы срaботать, но нужно нечеловеческое время на обучение и словарь побольше.
@@ -571,7 +567,7 @@ def get_superlatives(adjectives):
             ["fast"],
             w2v_embeds,
             wiki
-        )[0][1] for adjective in adjectives
+        )[:2] for adjective in adjectives
     ]
 
 adjectives = [
@@ -582,7 +578,7 @@ adjectives = [
     "strange",
     "blue",
 ]
-print("\n".join(" ".join(pair) for pair in zip(adjectives, get_superlatives(adjectives))))
+print("\n".join(": ".join((word.ljust(11), ", ".join(pair[1].rjust(10) for pair in closest))) for word, closest in zip(adjectives, get_superlatives(adjectives))))
 
 
 # О, работает! Почти... Смысл точно местами прослеживается.
@@ -598,7 +594,7 @@ def get_plurals(nouns):
             ["box"],
             w2v_embeds,
             wiki
-        )[0][1] for noun in nouns
+        )[:2] for noun in nouns
     ]
 
 nouns = [
@@ -608,7 +604,7 @@ nouns = [
     "chair",
     "glass",
 ]
-print("\n".join(" ".join(pair) for pair in zip(nouns, get_plurals(nouns))))
+print("\n".join(": ".join((word.ljust(11), ", ".join(pair[1].rjust(10) for pair in closest))) for word, closest in zip(nouns, get_plurals(nouns))))
 
 
 # Не очень что-то.
@@ -619,10 +615,13 @@ print("\n".join(" ".join(pair) for pair in zip(nouns, get_plurals(nouns))))
 
 # In[ ]:
 
-def build_cooccur(wiki, context_window=5):
-    chunk_size = 50000
-
-    slices = list(range(a, b) for a, b in (lambda x: zip(x, x[1:]))(np.arange(0, wiki.VOCAB_SIZE+chunk_size, chunk_size)))
+def build_cooccur(wiki, context_width=5, chunk_size = 50000):
+    slices = list(
+        range(a, b) for a, b in zip(
+            range(0, wiki.VOCAB_SIZE + chunk_size, chunk_size),
+            range(chunk_size, wiki.VOCAB_SIZE + chunk_size, chunk_size)
+        )
+    )
 
     mat = scipy.sparse.lil_matrix((wiki.VOCAB_SIZE, wiki.VOCAB_SIZE), dtype=np.float32)
 
@@ -639,10 +638,10 @@ def build_cooccur(wiki, context_window=5):
             stop = False
             i = 0
             while True:
-                i+= 1;
+                i += 1;
                 if i % 100000 == 0:
                     print("{}\r".format(i), end="")
-                while len(buffer) < context_window + 1:
+                while len(buffer) < context_width + 1:
                     try:
                         next_chunk = next(text_gen)
                     except StopIteration:
@@ -653,10 +652,10 @@ def build_cooccur(wiki, context_window=5):
                 if stop:
                     break
 
-                for j in range(1, context_window+1):
+                for j in range(1, context_width+1):
                     row, column = sorted([buffer[0], buffer[j]])
                     if row in range_x and column in range_y:
-                        if i == j:
+                        if x == y:
                             local_mat[row - x*chunk_size, column - y*chunk_size] += 1./j
                             local_mat[column - y*chunk_size, row - x*chunk_size] += 1./j
                         else:
@@ -682,6 +681,9 @@ def get_cooccur(wiki):
 
     return cooccurrences_matrix
 
+
+# In[ ]:
+
 cooccurrences_matrix = get_cooccur(wiki)
 
 
@@ -699,6 +701,14 @@ def glove_batch_gen(cooccur_mat, batch_size):
         np.random.shuffle(batches)
         for batch in range(0, len(batches), batch_size):
             yield zip(*batches[batch:batch+batch_size])
+
+
+# In[ ]:
+
+cooccurrence_cap = 250
+scaling_factor_c = 0.75
+batch_size = 512
+embedding_dim = 256
 
 
 # In[ ]:
@@ -761,7 +771,7 @@ with glove_graph.as_default():
 
     glove_losses = tf.multiply(weighting_factor, distance_expr)
     glove_loss = tf.reduce_sum(glove_losses)
-    optimizer = tf.train.AdagradOptimizer(0.15).minimize(glove_loss)
+    optimizer = tf.train.AdagradOptimizer(0.5).minimize(glove_loss)
 
     combined_embeddings = tf.add(focal_embeddings, context_embeddings, name="combined_embeddings")
 
@@ -770,16 +780,7 @@ with glove_graph.as_default():
 
 # In[ ]:
 
-cooccurrence_cap = 250
-scaling_factor_c = 0.75
-batch_size = 512
-embedding_dim = 256
-
-
-# In[ ]:
-
-def build_glove(wiki):
-    num_steps = 750
+def build_glove(wiki, num_steps = 750):
     average_loss = 0
 
     with tf.Session(graph=glove_graph) as session:
@@ -871,10 +872,8 @@ angle(wiki, [1, -1], ["man", "woman"], [1, -1], ["mr", "ms"])
 
 # In[ ]:
 
-angle([1, -1], ["good", "best"], [1, -1], ["bad", "worst"])
+angle(wiki, [1, -1], ["good", "best"], [1, -1], ["bad", "worst"])
 
-
-# Тоже неплохо. Без CEO, правда, придётся обойтись --- в словаре их нет почти.
 
 # Метрика для сравнения моделей --- количество правильных ответов на вопросы из датасета Миколова:
 
@@ -905,7 +904,7 @@ def evaluate(embeds, wiki, questions, labels):
 
 # In[ ]:
 
-evaluate(LSA_embeds, wiki, questions, labels)
+evaluate(lsa_embeds, wiki, questions, labels)
 
 
 # In[ ]:
@@ -915,7 +914,7 @@ evaluate(w2v_embeds, wiki, questions, labels)
 
 # In[ ]:
 
-evaluate(glove_embeds, glove_vocab, questions, labels)
+evaluate(glove_embeds, wiki, questions, labels)
 
 
 # Ну. Могло быть лучше, конечно, но w2v всех обошёл в ~2 раза
