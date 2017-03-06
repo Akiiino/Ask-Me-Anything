@@ -5,7 +5,7 @@
 
 # Для начала, как всегда, всевозможные приготовления к работе. Использовать будем заранее предобработанные текты из трёх википедий — английской, русской и simple. Большая часть лабы выполнялась на full, но переключение на любую другую производится заменой единственного параметра (не то чтобы это было неочевидно, впрочем).
 
-# In[ ]:
+# In[1]:
 
 import collections
 import math
@@ -34,117 +34,121 @@ import sklearn.decomposition
 from sklearn.manifold import TSNE
 
 
-# In[ ]:
+# In[2]:
 
 class Wiki:
     def __init__(self, wiki):
         self.wiki = wiki
-        self.__set_consts()
-        
-        if not os.path.exists(wiki):
-            os.mkdir(wiki)
-        
-        self.counter = self.vocab = self.rev_vocab = None
-        self.counter, self.vocab, self.rev_vocab = self.__get_vocab()
-        
+        self.__set_params()
 
-    def __set_consts(self):
-        wikis = {
+        if not os.path.exists(self.folder):
+            os.mkdir(self.folder)
+
+        self.counter, self.vocab, self.rev_vocab = self.__get_vocab()
+
+
+    def __set_params(self):
+        WIKIS = {
             'full': {
-                'lang'      : 'en',
-                'wiki_file' : '/Users/akiiino/Documents/Wiki/full/processed.dat',
-                'vocab_size': 150000
+                'lang': 'en',
+                'wiki_file': '/Users/akiiino/Documents/Wiki/full/processed.dat',
+                'vocab_size': 150000,
+                'folder': 'full'
             },
             'simple': {
-                'lang'      : 'en',
-                'wiki_file' : '/Users/akiiino/Documents/Wiki/simple/processed.dat',
-                'vocab_size': 50000
+                'lang': 'en',
+                'wiki_file': '/Users/akiiino/Documents/Wiki/simple/processed.dat',
+                'vocab_size': 50000,
+                'folder': 'simple'
             },
             'ru': {
-                'lang'      : 'ru',
-                'wiki_file' : '/Users/akiiino/Documents/Wiki/ru/processed.dat',
-                'vocab_size': 100000
+                'lang': 'ru',
+                'wiki_file': '/Users/akiiino/Documents/Wiki/ru/processed.dat',
+                'vocab_size': 100000,
+                'folder': 'ru'
             },
         }
 
+
+        self.lang = WIKIS[self.wiki]['lang']
+        self.__wiki_file = WIKIS[self.wiki]['wiki_file']
+        self.vocab_size = WIKIS[self.wiki]['vocab_size']
+        self.folder = WIKIS[self.wiki]['folder']
         
-        self.LANG = wikis[self.wiki]['lang']
-        self.WIKI_FILE = wikis[self.wiki]['wiki_file']
-        self.VOCAB_SIZE = wikis[self.wiki]['vocab_size']
-        
-        self.WORD_COUNT_FILE = os.path.join(self.wiki, 'word_counts')
-        self.LSA_TFIDF_FILE = os.path.join(self.wiki, 'LSA_TfIdf.npz')
-        self.LSA_EMBED_FILE = os.path.join(self.wiki, 'LSA_embed.npy')
-        self.LSA_VOCAB_FILE = os.path.join(self.wiki, 'LSA_vocab')
-        self.W2V_EMBED_FILE = os.path.join(self.wiki, 'W2V_embed.npy')
-        self.GLOVE_COOCC_FILE = os.path.join(self.wiki, 'glove_coocc.npz')
-        self.GLOVE_EMBED_FILE = os.path.join(self.wiki, 'glove_embed.npy')
-        self.TSNE_FILE = os.path.join(self.wiki, 'tsne.npy')
-        
-        self.stop_words = set(stop_words.get_stop_words(self.LANG))
-        self.punct_replace = re.compile(r"\p{P}+")
+        self.word_count_file = os.path.join(self.folder, 'word_counts')
+        self.lsa_tf_idf_file = os.path.join(self.folder, 'LSA_TfIdf.npz')
+        self.lsa_embeds_file = os.path.join(self.folder, 'LSA_embed.npy')
+        self.w2v_embeds_file = os.path.join(self.folder, 'W2V_embed.npy')
+        self.glove_cooccur_matrix_file = os.path.join(self.folder, 'glove_coocc.npz')
+        self.glove_embeds_file = os.path.join(self.folder, 'glove_embed.npy')
+
+        self.__stop_words = set(stop_words.get_stop_words(self.lang))
+        self.__punct_finder = re.compile(r"\p{P}+")
 
 
     def _normalize(self, text):
         text = text.lower()
-        text = self.punct_replace.sub("", text)
-        text = (word for word in text.split() if word not in self.stop_words)
+        text = self.__punct_finder.sub("", text)
+        text = (word for word in text.split() if word not in self.__stop_words)
         return text
 
 
     def wiki_gen(self, use_vocab=True, chunk_size=2**26, single_pass=False, joined=False):
-        read = 0
+        total_read = 0
+        last_reported = 0
 
-        with open(self.WIKI_FILE) as wiki_file:
+        with open(self.__wiki_file) as wiki_file:
             while True:
                 lines = " ".join(wiki_file.readlines(chunk_size))
-                read += len(lines)
+                total_read += len(lines)
 
-                if chunk_size >= 2**20:
-                    print('Pulling... total {} MB\r'.format(read//2**20), end="")
+                if total_read - last_reported >= 2**20:
+                    last_reported = total_read
+                    print('Pulling... total {} MB'.format(total_read//2**20), end="\r")
 
                 if not lines:
                     if single_pass:
                         return
                     wiki_file.seek(0)
-                    print("Starting over...          ")
+                    print("\nStarting over...")
                     continue
 
                 lines = self._normalize(lines)
 
-                if self.vocab is not None and use_vocab:
+                if use_vocab:
                     lines = (self.vocab[word] if word in self.vocab else 0 for word in lines)
 
-                if not joined:                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       
+                if not joined:
                     yield lines
                 else:
                     yield " ".join(lines)
-        
+
+
     def __get_vocab(self):
-        if not os.path.exists(self.WORD_COUNT_FILE):
+        if not os.path.exists(self.word_count_file):
             counter = collections.Counter()
 
             for chunk in self.wiki_gen(use_vocab=False, single_pass=True):
                 counter.update(chunk)
 
-            with open(self.WORD_COUNT_FILE, 'wb') as file:
+            with open(self.word_count_file, 'wb') as file:
                 pickle.dump(counter, file)
 
         else:
-            with open(self.WORD_COUNT_FILE, 'rb') as file:
+            with open(self.word_count_file, 'rb') as file:
                 counter = collections.Counter(pickle.load(file))
 
 
-        unk_count = sum(counter.values()) - sum(x[1] for x in counter.most_common(self.VOCAB_SIZE - 1))
-        counter = dict([('UNK', unk_count)] + counter.most_common(self.VOCAB_SIZE - 1))
-        
+        unk_count = sum(counter.values()) - sum(x[1] for x in counter.most_common(self.vocab_size - 1))
+        counter = dict([('UNK', unk_count)] + counter.most_common(self.vocab_size - 1))
+
         vocab     = {word: num for num, (word, _) in enumerate(counter.items())}
         rev_vocab = list(vocab.keys())
-        
+
         return counter, vocab, rev_vocab
 
 
-# In[ ]:
+# In[3]:
 
 wiki = Wiki("simple")
 
@@ -158,7 +162,7 @@ wiki = Wiki("simple")
 
 # Обучение устроено просто: пайплайн из `sklearn`'ового `TfidfVectorizer` для построения самой матрицы $X$, после чего Truncated SVD в виде `scipy.sparse.linalg.svds`.
 
-# In[ ]:
+# In[4]:
 
 def build_lsa(wiki):
     vectorizer = TfidfVectorizer(vocabulary=wiki.vocab)
@@ -170,31 +174,31 @@ def build_lsa(wiki):
             joined=True
         )
     ).T
-    np.savez(wiki.LSA_TFIDF_FILE, tf_idf_matrix)
+    np.savez(wiki.lsa_tf_idf_file, tf_idf_matrix)
 
     print("Tf-Idf done")
-    
+
     svd = sklearn.decomposition.TruncatedSVD(n_components=128)
-    
+
     lsa_embeds = svd.fit_transform(tf_idf_matrix)
     print("SVD done")
-    
+
     return lsa_embeds
 
 
-# In[ ]:
+# In[5]:
 
 def get_lsa(wiki):
-    if not os.path.exists(wiki.LSA_EMBED_FILE):
+    if not os.path.exists(wiki.lsa_embeds_file):
         lsa_embeds = build_lsa(wiki)
-        np.save(wiki.LSA_EMBED_FILE, lsa_embeds)
+        np.save(wiki.lsa_embeds_file, lsa_embeds)
     else:
-        lsa_embeds = np.load(wiki.LSA_EMBED_FILE)
-        
+        lsa_embeds = np.load(wiki.lsa_embeds_file)
+
     return lsa_embeds
 
 
-# In[ ]:
+# In[6]:
 
 lsa_embeds = get_lsa(wiki)
 
@@ -205,55 +209,57 @@ lsa_embeds = get_lsa(wiki)
 
 # Скелет для нахождения соседей: по вектору находим ближайшие слова; сложность линейная, т.к. использован `argpartition`. Сам вектор может быть получен как напрямую из слова, так и, например, сложениями и вычитаниями других векторов.
 
-# In[ ]:
+# In[7]:
 
-def closest_to_vec(vec, embeds, wiki, metric_name='euclid', count=10, with_dists=False):
+def get_closest_to_vec(vec, embeds, wiki, metric_name='euclid', count=10, with_dists=False):
         metrics = {
             'euclid': euclidean_distances,
             'cosine': cosine_similarity,
             'manhattan': manhattan_distances
         }
-        
+
         metric = metrics[metric_name]
-        
+
         dists = metric(
                 [vec],
                 embeds
         )[0]
-        
+
         if metric_name == "cosine":
                 closest_indexes = dists.argpartition(range(-count, 0))[-1:-count-1:-1]
         else:
                 closest_indexes = dists.argpartition(range(0, count))[:count]
-
+                
+        closest_words = (wiki.rev_vocab[x] for x in closest_indexes if x)
+        
         if with_dists:
-            return list(zip(dists[closest_indexes], [wiki.rev_vocab[x] for x in closest_indexes if x]))
-        else:
-            return [wiki.rev_vocab[x] for x in closest_indexes if x]
+            closest_words = zip(dists[closest_indexes], closest_words)
+
+        return list(closest_words)
 
 
 # Сам поиск по словам:
 
-# In[ ]:
+# In[8]:
 
-def closest_words(word, embeds, wiki, metric='euclid', count=10, with_dists=False):
-    return closest_to_vec(embeds[wiki.vocab[word]], embeds, wiki, metric, count, with_dists)
+def get_closest_words(word, embeds, wiki, metric='euclid', count=10, with_dists=False):
+    return get_closest_to_vec(embeds[wiki.vocab[word]], embeds, wiki, metric, count, with_dists)
 
 
-# In[ ]:
+# In[9]:
 
-words = ["field", "directed", "financial", "road", "provides", "player", "2011", "edition", "battle", "ended", "son", "least", "mexico", "male", "medal", "big", "central", "according", "km", "year", "rights", "george", "founded", "tournament", "instead", "movie", "445", "system", "york", "win"]
+EXAMPLE_WORDS = ["field", "directed", "financial", "road", "provides", "player", "2011", "edition", "battle", "ended", "son", "least", "mexico", "male", "medal", "big", "central", "according", "km", "year", "rights", "george", "founded", "tournament", "instead", "movie", "445", "system", "york", "win"]
 
 
 # **4**. Найдите 10 ближайших представлений к 30 словам, которые выбрали сами. Попытайтесь сделать так, чтобы примеры были интересными.
 
-# In[ ]:
+# In[10]:
 
-for word in words:
-    print(word.ljust(10), ":", " ".join(closest_words(word, lsa_embeds, wiki)[1:]))
+for word in EXAMPLE_WORDS:
+    print(word.ljust(10), ":", " ".join(get_closest_words(word, lsa_embeds, wiki)[1:]))
 
 
-# Есть несколько интересных вещей. 
+# Есть несколько интересных вещей.
 # Например, следующее:
 # - То, как сгруппированы числа (а особенно то, что рядом находятся числа схожей величины);
 # - то, что рядом со словом "york" находятся также и "jersey", и "new", с которого обычно начинаются оба;
@@ -264,20 +270,20 @@ for word in words:
 # **5**. Проделайте то же самое для косинусной меры. Какой результат вам показался более интересным?
 # 
 
-# In[ ]:
+# In[11]:
 
-for word in words:
-    print(word.ljust(10), ":", " ".join(closest_words(word, lsa_embeds, wiki, metric="cosine")[1:]))
+for word in EXAMPLE_WORDS:
+    print(word.ljust(10), ":", " ".join(get_closest_words(word, lsa_embeds, wiki, metric="cosine")[1:]))
 
 
 # Тут вообще непонятно что происходит. Видимо, в длине векторов тоже есть важная информация и лучше было всё же с евклидовой метрикой.
 
 # **6**. Предложите свою меру длины, проверьте, как она работает.
 
-# In[ ]:
+# In[12]:
 
-for word in words:
-    print(word.ljust(10), ":", " ".join(closest_words(word, lsa_embeds, wiki, metric="manhattan")[1:]))
+for word in EXAMPLE_WORDS:
+    print(word.ljust(10), ":", " ".join(get_closest_words(word, lsa_embeds, wiki, metric="manhattan")[1:]))
 
 
 # В целом, примерно как и в евклидовой метрике.
@@ -292,7 +298,7 @@ for word in words:
 
 # Тут практически нет отличий от CBOW. Два линейных слоя без нелинейности между ними, в конце --- softmax. На вход сеть принимает one-hot вектор размерности $W$, кодирующий центральное слово; на выходе --- вектор той же размерности, представляющий собой вероятности каждого слова.
 
-# **2**. Оцените сложность обучения skip-gram модели относительно параметров 
+# **2**. Оцените сложность обучения skip-gram модели относительно параметров
 # * $T$ - размер корпуса;
 # * $W$ - размер словаря;
 # * $c$ - радиус окна;
@@ -305,28 +311,28 @@ for word in words:
 # Softmax --- ещё дополнительно линейное (от $W$) время. Итого $O(WD)$ --- ничего страшного.
 # 
 # ** Backpropagation:**
-#     
+# 
 # Взятие производных функции ошибки --- $O(Wdc)$, т.к. мы берём производные по матрицам размера $O(Wd)$, и наш размер контекста --- $c$. При этом нам надо это будет сделать $O(T)$ раз --- для каждого батча.
 # 
 # Итого --- $O(TWdc)$
 
 # Батчи генерируются из скользящего окна шириной `context_width`; из каждого окна берётся `context_examples` пар слов.
 
-# In[ ]:
+# In[13]:
 
 def w2v_batch_gen(batch_size, context_examples, context_width):
     assert batch_size % context_examples == 0
     assert context_examples <= 2 * context_width
 
     gen = wiki.wiki_gen()
-    
+
     pulled = 0
     buffer = collections.deque()
 
     while True:
         while len(buffer) < 2 * context_width + batch_size // context_examples:
             buffer.extend(next(gen))
-        
+
         batch = np.ndarray(shape=(batch_size), dtype=np.int32)
         labels = np.ndarray(shape=(batch_size, 1), dtype=np.int32)
 
@@ -336,9 +342,9 @@ def w2v_batch_gen(batch_size, context_examples, context_width):
             target = context_width
             available_targets = list(range(span))
             available_targets.remove(target)
-            for j in range(context_examples):
-                target = random.choice(available_targets)
-                available_targets.remove(target)
+            chosen_targets = random.sample(available_targets, context_examples)
+
+            for j, target in enumerate(chosen_targets):
                 batch[i * context_examples + j] = buffer[context_width]
                 labels[i * context_examples + j, 0] = buffer[target]
             buffer.popleft()
@@ -351,22 +357,27 @@ def w2v_batch_gen(batch_size, context_examples, context_width):
 
 # Пользоваться будем NCE --- преимущественно из-за простоты реализации. Сложность обучения оценить легко: фактически, единственное существенное изменение (асимптотики, разумеется; сами алгоритмы отличаются существенно) заключается в том, что вместо прохода по всем $W$ словам, мы рассматриваем только $k$ cлучайных слов; итого сложность $O(Tcdk)$.
 
-# In[ ]:
+# In[14]:
 
-batch_size = 256
-embedding_dim = 256
-context_width = 6
-context_examples = 4
-neg_samples = 100
+W2V_PARAMS = {
+    'batch_size': 256,
+    'embedding_dim': 256,
+    'context_width': 6,
+    'context_examples': 4,
+    'neg_samples': 100
+}
+
+
+# In[15]:
 
 w2v_graph = tf.Graph()
 with w2v_graph.as_default():
-    train_inputs = tf.placeholder(tf.int32, shape=[batch_size])
-    train_labels = tf.placeholder(tf.int32, shape=[batch_size, 1])
+    train_inputs = tf.placeholder(tf.int32, shape=[W2V_PARAMS['batch_size']])
+    train_labels = tf.placeholder(tf.int32, shape=[W2V_PARAMS['batch_size'], 1])
 
     all_embeddings = tf.Variable(
         tf.random_uniform(
-            [wiki.VOCAB_SIZE, embedding_dim],
+            [wiki.vocab_size, W2V_PARAMS['embedding_dim']],
             -1.0,
             1.0
         )
@@ -375,11 +386,11 @@ with w2v_graph.as_default():
 
     weights = tf.Variable(
         tf.truncated_normal(
-            [wiki.VOCAB_SIZE, embedding_dim],
-            stddev=1.0 / math.sqrt(embedding_dim)
+            [wiki.vocab_size, W2V_PARAMS['embedding_dim']],
+            stddev=1.0 / math.sqrt(W2V_PARAMS['embedding_dim'])
         )
     )
-    biases = tf.Variable(tf.zeros([wiki.VOCAB_SIZE]))
+    biases = tf.Variable(tf.zeros([wiki.vocab_size]))
 
     loss = tf.reduce_mean(
         tf.nn.nce_loss(
@@ -387,8 +398,8 @@ with w2v_graph.as_default():
             biases=biases,
             labels=train_labels,
             inputs=embed,
-            num_sampled=neg_samples,
-            num_classes=wiki.VOCAB_SIZE
+            num_sampled=W2V_PARAMS['neg_samples'],
+            num_classes=wiki.vocab_size
         )
     )
 
@@ -401,14 +412,14 @@ with w2v_graph.as_default():
 
 # **3**. Обучите skip-gram модель.
 
-# In[ ]:
+# In[16]:
 
 def build_w2v(wiki, num_steps=500):
     with tf.Session(graph=w2v_graph) as session:
         init.run()
 
         average_loss = 0
-        batch_gen = w2v_batch_gen(batch_size, context_examples, context_width)
+        batch_gen = w2v_batch_gen(W2V_PARAMS['batch_size'], W2V_PARAMS['context_examples'], W2V_PARAMS['context_width'])
         for step in range(num_steps):
             try:
                 for _ in range(10000):
@@ -426,7 +437,7 @@ def build_w2v(wiki, num_steps=500):
                 w2v_embeds = all_embeddings.eval()
                 for i in range(10):
                     word = wiki.rev_vocab[random.randint(1, 150)]
-                    print(word.ljust(10), ":", " ".join(closest_words(word, w2v_embeds, wiki)[1:]))
+                    print(word.ljust(10), ":", " ".join(get_closest_words(word, w2v_embeds, wiki)[1:]))
 
             except KeyboardInterrupt:
                 break
@@ -435,46 +446,46 @@ def build_w2v(wiki, num_steps=500):
     return w2v_embeds
 
 
-# In[ ]:
+# In[17]:
 
 def get_w2v(wiki):
-    if not os.path.exists(wiki.W2V_EMBED_FILE):
+    if not os.path.exists(wiki.w2v_embeds_file):
         w2v_embeds = build_w2v(wiki)
-        np.save(wiki.W2V_EMBED_FILE, w2v_embeds)
+        np.save(wiki.w2v_embeds_file, w2v_embeds)
     else:
-        w2v_embeds = np.load(wiki.W2V_EMBED_FILE)
-        
+        w2v_embeds = np.load(wiki.w2v_embeds_file)
+
     return w2v_embeds
 
 
-# In[ ]:
+# In[18]:
 
 w2v_embeds = get_w2v(wiki)
 
 
 # **4**. Попробуйте снова найти ближайшие представления для тех 30 слов. Улучшился ли результат визуально? Попробуйте разные меры расстояния (евклидова, косинусная).
 
-# In[ ]:
+# In[19]:
 
-for word in words:
-    print(word.ljust(10), ":", " ".join(closest_words(word, w2v_embeds, wiki)[1:]))
+for word in EXAMPLE_WORDS:
+    print(word.ljust(10), ":", " ".join(get_closest_words(word, w2v_embeds, wiki)[1:]))
 
 
 # Видно, что качество сильно улучшилось; вместо слов, которые относятся примерно к одной теме теперь рядом находятся слова, значащие примерно одно и то же; вместо всяких "founded" --- "university" и прочее, теперь тут "founded: --- "formed", "established"... "bought"... В общем, теперь смысла гораздо больше (что было ясно ещё из сложений-вычитаний).
 
-# **5**. Найдите ближайшие вектора для выражения v(king) - v(man) + v(women). Если модель обучена хорошо, то среди ближайших векторов должно быть представление v(queen). 
+# **5**. Найдите ближайшие вектора для выражения v(king) - v(man) + v(women). Если модель обучена хорошо, то среди ближайших векторов должно быть представление v(queen).
 # 
 
 # Функция для сложения-вычитания векторов:
 
-# In[ ]:
+# In[20]:
 
-def analogy(pos, neg, embeds, wiki, metric='euclid', count=10):
+def get_analogy(pos, neg, embeds, wiki, metric='euclid', count=10):
     pos_vec = [embeds[wiki.vocab.get(w, 0)] for w in pos]
     neg_vec = [embeds[wiki.vocab.get(w, 0)] for w in neg]
 
     return [
-        pair for pair in closest_to_vec(
+        pair for pair in get_closest_to_vec(
             sum(pos_vec) - sum(neg_vec),
             embeds,
             wiki,
@@ -487,9 +498,9 @@ def analogy(pos, neg, embeds, wiki, metric='euclid', count=10):
 
 # Можно поэкспериментировать и посмотреть, что получится. Базовые примеры:
 
-# In[ ]:
+# In[21]:
 
-analogy(["king", "woman"], ["man"], w2v_embeds, wiki)
+get_analogy(["king", "woman"], ["man"], w2v_embeds, wiki)
 
 
 # **6**. На основе арифметических операций над представлениями предложите алгоритмы, которые
@@ -501,11 +512,11 @@ analogy(["king", "woman"], ["man"], w2v_embeds, wiki)
 
 # #1. Столицы:
 
-# In[ ]:
+# In[22]:
 
 def get_capitals(countries):
     return [
-        analogy(
+        get_analogy(
             [country,
             "moscow",],
             ["russia",],
@@ -534,11 +545,11 @@ print("\n".join(": ".join((word.ljust(11), ", ".join(pair[1].rjust(10) for pair 
 
 # #2. CEO:
 
-# In[ ]:
+# In[23]:
 
 def get_CEOs(companies):
     return [
-        analogy(
+        get_analogy(
             ["zuckerberg", company],
             ["facebook"],
             w2v_embeds,
@@ -558,11 +569,11 @@ print("\n".join(": ".join((word.ljust(11), ", ".join(pair[1].rjust(10) for pair 
 
 # #3. Прилагательные:
 
-# In[ ]:
+# In[24]:
 
 def get_superlatives(adjectives):
     return [
-        analogy(
+        get_analogy(
             ["fastest", adjective],
             ["fast"],
             w2v_embeds,
@@ -585,11 +596,11 @@ print("\n".join(": ".join((word.ljust(11), ", ".join(pair[1].rjust(10) for pair 
 
 # #4. Множественное число:
 
-# In[ ]:
+# In[25]:
 
 def get_plurals(nouns):
     return [
-        analogy(
+        get_analogy(
             ["boxes", noun],
             ["box"],
             w2v_embeds,
@@ -613,17 +624,17 @@ print("\n".join(": ".join((word.ljust(11), ", ".join(pair[1].rjust(10) for pair 
 
 # Построим матрицу:
 
-# In[ ]:
+# In[26]:
 
 def build_cooccur(wiki, context_width=5, chunk_size = 50000):
     slices = list(
         range(a, b) for a, b in zip(
-            range(0, wiki.VOCAB_SIZE + chunk_size, chunk_size),
-            range(chunk_size, wiki.VOCAB_SIZE + chunk_size, chunk_size)
+            range(0, wiki.vocab_size + chunk_size, chunk_size),
+            range(chunk_size, wiki.vocab_size + chunk_size, chunk_size)
         )
     )
 
-    mat = scipy.sparse.lil_matrix((wiki.VOCAB_SIZE, wiki.VOCAB_SIZE), dtype=np.float32)
+    mat = scipy.sparse.lil_matrix((wiki.vocab_size, wiki.vocab_size), dtype=np.float32)
 
     for x, range_x in enumerate(slices):
         for y, range_y in list(enumerate(slices))[x:]:
@@ -638,7 +649,7 @@ def build_cooccur(wiki, context_width=5, chunk_size = 50000):
             stop = False
             i = 0
             while True:
-                i += 1;
+                i += 1
                 if i % 100000 == 0:
                     print("{}\r".format(i), end="")
                 while len(buffer) < context_width + 1:
@@ -669,84 +680,84 @@ def build_cooccur(wiki, context_width=5, chunk_size = 50000):
     return mat
 
 
-# In[ ]:
+# In[27]:
 
 def get_cooccur(wiki):
-    if not os.path.exists(wiki.GLOVE_COOCC_FILE):
+    if not os.path.exists(wiki.glove_cooccur_matrix_file):
         cooccurrences_matrix = build_cooccur(wiki)
-        np.savez(wiki.GLOVE_COOCC_FILE, cooccurrences_matrix)
-        
+        np.savez(wiki.glove_cooccur_matrix_file, cooccurrences_matrix)
+
     else:
-        cooccurrences_matrix = np.load(wiki.GLOVE_COOCC_FILE).items()[0][1].item()
+        cooccurrences_matrix = np.load(wiki.glove_cooccur_matrix_file).items()[0][1].item()
 
     return cooccurrences_matrix
 
 
-# In[ ]:
+# In[28]:
 
 cooccurrences_matrix = get_cooccur(wiki)
 
 
-# In[ ]:
+# In[29]:
 
 def glove_batch_gen(cooccur_mat, batch_size):
     def single_gen():
         for i, (row, data) in enumerate(zip(cooccur_mat.rows, cooccur_mat.data)):
             for data_idx, j in enumerate(row):
                 yield i, j, data[data_idx]
-    
+
     batches = list(single_gen())
-                
+
     while True:
         np.random.shuffle(batches)
         for batch in range(0, len(batches), batch_size):
             yield zip(*batches[batch:batch+batch_size])
 
 
-# In[ ]:
+# In[30]:
 
-cooccurrence_cap = 250
-scaling_factor_c = 0.75
-batch_size = 512
-embedding_dim = 256
+GLOVE_PARAMS = {
+    'cooccurrence_cap': 250,
+    'scaling_factor_c': 0.75,
+    'batch_size': 512,
+    'embedding_dim': 256
+}
 
 
-# In[ ]:
+# In[31]:
 
 glove_graph = tf.Graph()
 
 with glove_graph.as_default():
-    count_max      = tf.constant([cooccurrence_cap], dtype=tf.float32, name='max_cooccurrence_count')
-    scaling_factor = tf.constant([scaling_factor_c], dtype=tf.float32, name="scaling_factor")
+    count_max = tf.constant([GLOVE_PARAMS['cooccurrence_cap']], dtype=tf.float32)
+    scaling_factor = tf.constant([GLOVE_PARAMS['scaling_factor_c']], dtype=tf.float32)
 
-    focal_input        = tf.placeholder(tf.int32,   shape=[batch_size], name="focal_words")
-    context_input      = tf.placeholder(tf.int32,   shape=[batch_size], name="context_words")
-    cooccurrence_count = tf.placeholder(tf.float32, shape=[batch_size], name="cooccurrence_count")
+    focal_input = tf.placeholder(tf.int32, shape=[GLOVE_PARAMS['batch_size']])
+    context_input = tf.placeholder(tf.int32, shape=[GLOVE_PARAMS['batch_size']])
+    cooccurrence_count = tf.placeholder(tf.float32, shape=[GLOVE_PARAMS['batch_size']])
 
     focal_embeddings = tf.Variable(
         tf.random_uniform(
-            [wiki.VOCAB_SIZE, embedding_dim],
+            [wiki.vocab_size, GLOVE_PARAMS['embedding_dim']],
             1.0,
             -1.0
-        ),
-        name="focal_embeddings"
+        )
     )
     context_embeddings = tf.Variable(
         tf.random_uniform(
-            [wiki.VOCAB_SIZE, embedding_dim],
+            [wiki.vocab_size, GLOVE_PARAMS['embedding_dim']],
             1.0,
             -1.0
-        ),
-        name="context_embeddings"
+        )
     )
 
-    focal_biases   = tf.Variable(tf.random_uniform([wiki.VOCAB_SIZE], 1.0, -1.0), name='focal_biases')
-    context_biases = tf.Variable(tf.random_uniform([wiki.VOCAB_SIZE], 1.0, -1.0), name="context_biases")
+    focal_biases = tf.Variable(tf.random_uniform([wiki.vocab_size], 1.0, -1.0))
+    context_biases = tf.Variable(tf.random_uniform([wiki.vocab_size], 1.0, -1.0))
 
-    focal_embedding   = tf.nn.embedding_lookup([focal_embeddings],   focal_input)
+    focal_embedding = tf.nn.embedding_lookup([focal_embeddings], focal_input)
     context_embedding = tf.nn.embedding_lookup([context_embeddings], context_input)
-    focal_bias        = tf.nn.embedding_lookup([focal_biases],       focal_input)
-    context_bias      = tf.nn.embedding_lookup([context_biases],     context_input)
+    focal_bias = tf.nn.embedding_lookup([focal_biases], focal_input)
+    context_bias = tf.nn.embedding_lookup([context_biases], context_input)
 
     weighting_factor = tf.minimum(
         1.0,
@@ -778,19 +789,19 @@ with glove_graph.as_default():
     init = tf.global_variables_initializer()
 
 
-# In[ ]:
+# In[50]:
 
-def build_glove(wiki, num_steps = 750):
+def build_glove(wiki, num_steps=1500):
     average_loss = 0
 
     with tf.Session(graph=glove_graph) as session:
         init.run()
         for step in range(num_steps):
             try:
-                batch_gen = glove_batch_gen(cooccurrences_matrix, batch_size)
+                batch_gen = glove_batch_gen(cooccurrences_matrix, GLOVE_PARAMS['batch_size'])
                 for _ in range(1000):
                     centers, contexts, counts = next(batch_gen)
-                    if len(counts) != batch_size:
+                    if len(counts) != GLOVE_PARAMS['batch_size']:
                         continue
                     feed_dict = {
                         focal_input: centers,
@@ -810,21 +821,21 @@ def build_glove(wiki, num_steps = 750):
                 glove_embeds = combined_embeddings.eval()
                 for i in range(10):
                     w = wiki.rev_vocab[random.randint(1, 150)]
-                    print(w.ljust(10), ":", " ".join(closest_words(w, glove_embeds, wiki)[1:]))
+                    print(w.ljust(10), ":", " ".join(get_closest_words(w, glove_embeds, wiki)[1:]))
             except KeyboardInterrupt:
                 break
         glove_embeds = combined_embeddings.eval()
     return glove_embeds
 
 
-# In[ ]:
+# In[51]:
 
 def get_glove(wiki):
-    if not os.path.exists(wiki.GLOVE_EMBED_FILE):
+    if not os.path.exists(wiki.glove_embeds_file):
         glove_embeds = build_glove(wiki)
-        np.save(wiki.GLOVE_EMBED_FILE, glove_embeds)
+        np.save(wiki.glove_embeds_file, glove_embeds)
     else:
-        glove_embeds = np.load(wiki.GLOVE_EMBED_FILE)
+        glove_embeds = np.load(wiki.glove_embeds_file)
     return glove_embeds
 
 
@@ -835,16 +846,16 @@ glove_embeds = get_glove(wiki)
 
 # Теперь T-SNE. Тут тоже просто библиотечная реализация. Единственное, если вогнать всю матрицу, падает от нехватки памяти, так что обойдёмся первыми 10к векторов.
 
-# In[ ]:
+# In[35]:
 
 tsne = TSNE(3)
 post_tsne_glove = tsne.fit(glove_embeds[:10000])
 
 
-# In[ ]:
+# In[48]:
 
 get_ipython().magic('matplotlib notebook')
-fig = plt.figure(figsize=(10,10)) 
+fig = plt.figure(figsize=(10,10))
 ax = fig.add_subplot(111, projection="3d")
 for i, (label, _) in enumerate(collections.Counter(wiki.counter).most_common(100)):
     x, y, z = post_tsne_glove.embedding_[i]
@@ -854,30 +865,32 @@ for i, (label, _) in enumerate(collections.Counter(wiki.counter).most_common(100
 
 # Не вполне ясно, что предлагается из этого выжимать, впрочем. Давайте просто померяем углы:
 
-# In[ ]:
+# In[40]:
 
-def angle(wiki, s1, w1, s2, w2):
+def get_angle(wiki, pairs):
     return np.arccos(cosine_similarity(
-        [sum(post_tsne_glove.embedding_[wiki.vocab[x]]*sign for sign, x in zip(s1, w1))],
-        [sum(post_tsne_glove.embedding_[wiki.vocab[x]]*sign for sign, x in zip(s2, w2))],
+        [sum(post_tsne_glove.embedding_[wiki.vocab[x]]*sign for x, sign in zip(pairs[0], (1, -1)))],
+        [sum(post_tsne_glove.embedding_[wiki.vocab[x]]*sign for x, sign in zip(pairs[1], (1, -1)))]
     ))[0][0]*90/np.pi
 
 
-# In[ ]:
+# In[41]:
 
-angle(wiki, [1, -1], ["man", "woman"], [1, -1], ["mr", "ms"])
+get_angle(wiki, [("man", "woman"), ("mr", "ms")])
 
 
 # Более-менее
 
-# In[ ]:
+# In[42]:
 
-angle(wiki, [1, -1], ["good", "best"], [1, -1], ["bad", "worst"])
+get_angle(wiki, [("good", "best"), ("bad", "worst")])
 
+
+# Тоже неплохо, в принципе.
 
 # Метрика для сравнения моделей --- количество правильных ответов на вопросы из датасета Миколова:
 
-# In[ ]:
+# In[43]:
 
 with open("questions-words.txt") as question_file:
     parsed = (
@@ -891,28 +904,28 @@ with open("questions-words.txt") as question_file:
     questions = list(zip(*questions))
 
 
-# In[ ]:
+# In[44]:
 
 def evaluate(embeds, wiki, questions, labels):
     total = 0
     for i, (label, (pos1, neg, pos2)) in enumerate(zip(labels, questions)):
         if i % 50 == 0:
             print("{}\r".format((i, total)), end="")
-        total += (label in set(x[1] for x in analogy([pos1, pos2], [neg], embeds, wiki)))
+        total += (label in set(x[1] for x in get_analogy([pos1, pos2], [neg], embeds, wiki)))
     return total
 
 
-# In[ ]:
+# In[47]:
 
 evaluate(lsa_embeds, wiki, questions, labels)
 
 
-# In[ ]:
+# In[46]:
 
 evaluate(w2v_embeds, wiki, questions, labels)
 
 
-# In[ ]:
+# In[45]:
 
 evaluate(glove_embeds, wiki, questions, labels)
 
