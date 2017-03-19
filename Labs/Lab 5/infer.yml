@@ -1,0 +1,13 @@
+tasks:
+  - class: DecodeText
+    params:
+      delimiter: _
+      enumerate: True
+      offset: 1
+model_params:
+  inference.beam_search.beam_width: 5
+input_pipeline:
+  class: ParallelTextInputPipeline
+  params:
+    source_files:
+      - prepared/test_words
