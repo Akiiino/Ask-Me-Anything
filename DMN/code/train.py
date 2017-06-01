@@ -2,41 +2,45 @@ from data import bAbIGen
 import pickle
 from collections import namedtuple
 import keras
+import sys
+import os
+import yaml
 
 from model import MyModel
 
-config = {
-    "max_context_len": 500,
-    "max_sentence_num": 100,
-    "max_sentence_len": 15,
-    "max_question_len": 15,
-    "max_answer_len": 6,
-    "vocab_size": 200,
-    "hidden_dim": 80
-}
+config = yaml.load("config.yml")
 
 config = namedtuple("Config", config.keys())(*config.values())
 
-
-with open("vocab.pickle", "rb") as file:
+with open(config.vocab_file, "rb") as file:
     vocab, rev_vocab = pickle.load(file)
 
-train_gen = bAbIGen("../mixed/train_all.txt", config).generate_batches(1000, vocab)
-valid_gen = bAbIGen("../mixed/valid_all.txt", config).generate_batches(1000, vocab)
+train_gen = bAbIGen(
+    os.path.join(config.bAbI_folder, "train_all.txt"),
+    config
+).generate_batches(config.batch_size, vocab, False)
+valid_gen = bAbIGen(
+    os.path.join(config.bAbI_folder, "valid_all.txt"),
+    config
+).generate_batches(config.batch_size, vocab, False)
 
 
 m = MyModel(config)
 m.compile()
+
+if len(sys.argv) > 1:
+    m.load(sys.argv[1])
+
 gen_wrap = m.generator_wrapper
 
 m.model.fit_generator(
     gen_wrap(train_gen),
     100,
-    100,
+    500,
     validation_data=gen_wrap(valid_gen),
     validation_steps=20,
     callbacks=[
-        keras.callbacks.ModelCheckpoint("best_loss", save_best_only=True),
+        keras.callbacks.ModelCheckpoint("/output/best_loss", save_best_only=True),
         keras.callbacks.EarlyStopping(patience=20)
     ]
 )

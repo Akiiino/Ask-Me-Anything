@@ -1,0 +1,9 @@
+vocab_file: vocab.pickle
+bAbI_folder: ../mixed
+max_answer_len: 6
+max_question_len: 15
+max_sentence_len: 15
+max_sentence_num: 100
+batch_size: 500
+hidden_dim: 200
+vocab_size: 200
