@@ -1,0 +1,13 @@
+<form method="POST" action=".">
+<textarea rows="50" cols="50" name="fooput">
+{% if text %}{{ text }}{% endif %}
+</textarea><br><br>
+<input type="submit" name="ask" value="Ask me!">
+<input type="submit" name="load" value="Load example"><br><br>
+{% if true_answer %}
+    The real answer is "{{ true_answer }}"
+    {% endif %}<br>
+{% if answer %}
+    The model answered "{{ answer }}"
+{% endif %}
+</form>

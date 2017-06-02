@@ -93,10 +93,12 @@ class bAbIGen:
             self.mode = "string"
         self.config = config
 
-    def __tokenize(self, string):
-        return [x.strip() for x in re.split('(\W+)?', string.lower()) if x.strip()]
+    def __tokenize(self, string, lowercase=True):
+        if lowercase:
+            string = string.lower()
+        return [x.strip() for x in re.split('(\W+)?', string) if x.strip()]
 
-    def generate_stories(self, concat=False):
+    def generate_stories(self, concat=False, lowercase=True):
         data = []
         story = []
         for line in self.file.readlines():
@@ -110,13 +112,13 @@ class bAbIGen:
 
             if '\t' in line:
                 q, a, supporting = line.split('\t')
-                q = self.__tokenize(q)
-                a = self.__tokenize(a + ".")
+                q = self.__tokenize(q, lowercase)
+                a = self.__tokenize(a + ".", lowercase)
                 substory = None
                 substory = [x for x in story if x]
                 data.append((substory, q, a))
             else:
-                sent = self.__tokenize(line)
+                sent = self.__tokenize(line, lowercase)
                 if concat:
                     story.extend(sent)
                 else:

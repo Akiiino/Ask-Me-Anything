@@ -1,5 +1,5 @@
 vocab_file: vocab.pickle
-bAbI_folder: ../mixed
+bAbI_folder: tasks
 max_answer_len: 6
 max_question_len: 15
 max_sentence_len: 15

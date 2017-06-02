@@ -9,6 +9,7 @@ import numpy as np
 from keras.utils.np_utils import to_categorical
 from keras.models import Model
 from keras.optimizers import Adadelta
+from code.data import generate_from_string
 
 
 class MyEmbedding(Layer):
@@ -49,8 +50,9 @@ class Positioning(Layer):
 
 
 class MyModel:
-    def __init__(self, config):
+    def __init__(self, config, return_attentions=False):
         self.config = config
+        self.return_attentions = return_attentions
 
         question_input = Input((config.max_question_len, ), dtype='int32')
 
@@ -90,6 +92,8 @@ class MyModel:
 
         memory = summarized_question
 
+        attention_outs = []
+
         for pass_ in range(4):
             repeated_memory = RepeatVector(config.max_sentence_num)(memory)
             attention = concatenate([
@@ -116,6 +120,7 @@ class MyModel:
 
             attention = TimeDistributed(Dense(512, activation='relu'))(attention)
             attention = TimeDistributed(Dense(1, activation='sigmoid'))(attention)
+            attention_outs.append(attention)
             attention = Lambda(lambda x: K.concatenate([x]*config.hidden_dim*2))(attention)
 
             attented_contexts = multiply([attention, contexts])
@@ -131,9 +136,10 @@ class MyModel:
         pre_out = GRU(config.hidden_dim, return_sequences=True, implementation=2)(pre_out)
         out = Dense(config.vocab_size, activation="softmax")(pre_out)
 
-        self.model = Model([context_input, question_input], out)
-
-    def compile(self):
+        if return_attentions:
+            self.model = Model([context_input, question_input], [out, *attention_outs])
+        else:
+            self.model = Model([context_input, question_input], out)
         self.model.compile(Adadelta(), "categorical_crossentropy", metrics=["accuracy", self.accuracy])
 
     def load(self, file):
@@ -151,3 +157,21 @@ class MyModel:
 
     def accuracy(self, true, pred):
         return K.mean(K.equal(K.mean(K.equal(K.argmax(true, -1), K.argmax(pred, -1)), -1), 1))
+
+    def predict_from_text(self, string, vocab, rev_vocab):
+        prediction = self.model.predict(
+            generate_from_string(string, self.config, vocab)
+        )
+
+        if self.return_attentions:
+            prediction = prediction[0]
+        return " ".join(
+            [
+                word for word in [
+                    rev_vocab[num] for num in np.argmax(
+                        prediction,
+                        axis=-1)[0]
+                ]
+                if word != "PAD"
+            ]
+        ).replace(" .", ".").replace(" ,", ",")
