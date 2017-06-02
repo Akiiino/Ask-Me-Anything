@@ -1,3 +1,21 @@
+
+<style type="text/css">
+#wrap {
+   width:1000px;
+   margin:0 auto;
+}
+#left_col {
+   float:left;
+   width:500px;
+}
+#right_col {
+   float:right;
+   width:500px;
+}
+</style>
+
+<div id="wrap">
+    <div id="left_col">
 <form method="POST" action=".">
 <textarea rows="50" cols="50" name="fooput">
 {% if text %}{{ text }}{% endif %}
@@ -11,3 +29,10 @@
     The model answered "{{ answer }}"
 {% endif %}
 </form>
+    </div>
+    <div id="right_col">
+        <b>Attention values</b>:
+
+{{ data | safe}}
+    </div>
+</div>

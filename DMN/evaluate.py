@@ -18,14 +18,14 @@ with open(config.vocab_file, "rb") as file:
     vocab, rev_vocab = pickle.load(file)
 
 m = MyModel(config)
-m.load(sys.argv[2])
+m.load(sys.argv[1])
 gen_wrap = m.generator_wrapper
 
 stats = []
 files = []
 
-for file in natsorted(os.listdir(config.babi_folder)):
-    test_gen = bAbIGen(os.path.join(config.babi_folder, file), config).generate_batches(config.batch_size, vocab, False)
+for file in natsorted(os.listdir(config.bAbI_folder)):
+    test_gen = bAbIGen(os.path.join(config.bAbI_folder, file), config).generate_batches(config.batch_size, vocab, False)
 
     score = m.model.evaluate_generator(
         gen_wrap(test_gen),

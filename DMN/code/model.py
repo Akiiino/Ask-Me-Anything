@@ -159,13 +159,16 @@ class MyModel:
         return K.mean(K.equal(K.mean(K.equal(K.argmax(true, -1), K.argmax(pred, -1)), -1), 1))
 
     def predict_from_text(self, string, vocab, rev_vocab):
-        prediction = self.model.predict(
+        raw_prediction = self.model.predict(
             generate_from_string(string, self.config, vocab)
         )
 
         if self.return_attentions:
-            prediction = prediction[0]
-        return " ".join(
+            prediction = raw_prediction[0]
+        else:
+            prediction = raw_prediction
+
+        answer = " ".join(
             [
                 word for word in [
                     rev_vocab[num] for num in np.argmax(
@@ -174,4 +177,9 @@ class MyModel:
                 ]
                 if word != "PAD"
             ]
-        ).replace(" .", ".").replace(" ,", ",")
+        ).replace(" .", ".").replace(" ,", ","),
+
+        if self.return_attentions:
+            return (answer, *raw_prediction[1:])
+        else:
+            return answer
